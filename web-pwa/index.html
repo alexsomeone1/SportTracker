@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Sport Tracker - відстеження тренувань">
+    <meta name="theme-color" content="#00BCD4">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Sport Tracker">
+    <title>Sport Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Fallback для логотипу, якщо іконка не знайдена -->
+    <style>
+      #app-logo {
+        display: block;
+      }
+      #app-logo[src=""] {
+        display: none;
+      }
+      /* Приховуємо екрани до перевірки стану авторизації */
+      #auth-screen, #main-screen {
+        display: none !important;
+      }
+      #auth-screen.active, #main-screen.active {
+        display: flex !important;
+      }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/uk.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Екран авторизації -->
+        <div id="auth-screen" class="screen" style="display: none;">
+            <div class="auth-container">
+                <img src="icons/icon-192.png" alt="Sport Tracker" class="app-logo" id="app-logo">
+                <h1 class="welcome-text">Вітаємо у<br>Sport Tracker!</h1>
+                <button id="google-sign-in-btn" class="btn btn-outlined">
+                    Увійти через Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Основний екран -->
+        <div id="main-screen" class="screen">
+            <!-- Контейнер для вкладок з анімацією -->
+            <div id="tabs-container" class="tabs-container">
+                <!-- Вкладка Список -->
+                <div id="list-tab" class="tab-content active">
+                <div class="header">
+                    <h2>Список тренувань</h2>
+                </div>
+                <div class="list-container">
+                    <!-- Фільтр по виду спорту -->
+                    <div class="sport-filter-wrapper">
+                        <button id="sport-filter-btn" class="sport-filter">
+                            <span id="sport-filter-text">Вид спорту: Усі</span>
+                        </button>
+                        <div id="sport-filter-dropdown" class="sport-filter-dropdown">
+                            <div class="sport-filter-item active" data-sport="">
+                                <span class="sport-filter-check">✓</span>
+                                <span>Усі</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="GYM">
+                                <span class="sport-filter-emoji">🏋️</span>
+                                <span>Зал</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="FOOTBALL">
+                                <span class="sport-filter-emoji">⚽</span>
+                                <span>Футбол</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="RUNNING">
+                                <span class="sport-filter-emoji">🏃</span>
+                                <span>Біг</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="TABLE_TENNIS">
+                                <span class="sport-filter-emoji">🏓</span>
+                                <span>Настільний теніс</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="TENNIS">
+                                <span class="sport-filter-emoji">🎾</span>
+                                <span>Теніс</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="SWIMMING">
+                                <span class="sport-filter-emoji">🏊</span>
+                                <span>Плавання</span>
+                            </div>
+                            <div class="sport-filter-item" data-sport="CYCLING">
+                                <span class="sport-filter-emoji">🚴</span>
+                                <span>Велосипед</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Період -->
+                    <div class="period-label">Період</div>
+                    
+                    <!-- Кнопки вибору періоду -->
+                    <div class="period-buttons">
+                        <button id="from-date-btn" class="btn-outlined period-btn">
+                            <span id="from-date-display">Від: 01.01.2024</span>
+                        </button>
+                        <input type="text" id="from-date-input" class="date-input-hidden" readonly>
+                        <button id="to-date-btn" class="btn-outlined period-btn">
+                            <span id="to-date-display">До: 31.12.2024</span>
+                        </button>
+                        <input type="text" id="to-date-input" class="date-input-hidden" readonly>
+                    </div>
+                    
+                    <!-- Кількість та список -->
+                    <div id="list-count" class="list-count"></div>
+                    <div id="trainings-list" class="trainings-list"></div>
+                </div>
+            </div>
+
+            <!-- Вкладка Додати -->
+            <div id="add-tab" class="tab-content">
+                <div class="header">
+                    <h2>Додати тренування</h2>
+                </div>
+                <div class="form-container">
+                    <div class="form-group">
+                        <div class="sport-filter-wrapper">
+                            <button id="sport-select-btn" class="sport-filter">
+                                <span id="sport-select-text">Оберіть вид спорту</span>
+                            </button>
+                            <div id="sport-select-dropdown" class="sport-filter-dropdown">
+                                <div class="sport-filter-item" data-sport="">
+                                    <span class="sport-filter-check">✓</span>
+                                    <span>Оберіть вид спорту</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="GYM">
+                                    <span class="sport-filter-emoji">🏋️</span>
+                                    <span>Зал</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="FOOTBALL">
+                                    <span class="sport-filter-emoji">⚽</span>
+                                    <span>Футбол</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="RUNNING">
+                                    <span class="sport-filter-emoji">🏃</span>
+                                    <span>Біг</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="TABLE_TENNIS">
+                                    <span class="sport-filter-emoji">🏓</span>
+                                    <span>Настільний теніс</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="TENNIS">
+                                    <span class="sport-filter-emoji">🎾</span>
+                                    <span>Теніс</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="SWIMMING">
+                                    <span class="sport-filter-emoji">🏊</span>
+                                    <span>Плавання</span>
+                                </div>
+                                <div class="sport-filter-item" data-sport="CYCLING">
+                                    <span class="sport-filter-emoji">🚴</span>
+                                    <span>Велосипед</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" id="date-picker-btn" class="form-control date-picker-btn">
+                            <span class="material-icons">calendar_today</span>
+                            <span id="date-display">Дата: Оберіть дату</span>
+                        </button>
+                        <input type="text" id="date-input" class="date-input-hidden" readonly>
+                    </div>
+                    <div class="form-group">
+                        <button id="save-training-btn" class="btn btn-primary">
+                            <span class="material-icons">check</span>
+                            <span>Зберегти</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Статистика -->
+            <div id="stats-tab" class="tab-content">
+                <div class="stats-container">
+                    <!-- Кнопка виходу в правому верхньому кутку -->
+                    <button id="logout-btn" class="btn-icon material-icons">logout</button>
+                    
+                    <!-- Заголовок -->
+                    <h2 class="stats-title">Статистика</h2>
+                    
+                    <!-- Кнопки фільтрів -->
+                    <div class="period-filters">
+                        <button class="filter-btn" data-period="week">Тиждень</button>
+                        <button class="filter-btn" data-period="month">Місяць</button>
+                        <button class="filter-btn" data-period="year">Рік</button>
+                    </div>
+                    
+                    <!-- Кнопки навігації по періодах -->
+                    <div class="period-navigation">
+                        <button id="prev-period-btn" class="nav-period-btn material-icons">arrow_back</button>
+                        <div id="period-text" class="period-text"></div>
+                        <button id="next-period-btn" class="nav-period-btn material-icons">arrow_forward</button>
+                    </div>
+                    
+                    <!-- Результати -->
+                    <div class="stats-results">
+                        <div class="stats-total">Всього: <span id="total-trainings">0</span></div>
+                        <div id="stats-by-sport" class="stats-by-sport-list"></div>
+                    </div>
+                    
+                    <!-- Spacer для nav bar -->
+                    <div class="stats-spacer"></div>
+                </div>
+            </div>
+            </div>
+            
+            <!-- Навігація -->
+            <nav class="bottom-nav">
+                <button class="nav-btn active" data-tab="list">
+                    <span class="nav-icon">☰</span>
+                    <span>Список</span>
+                </button>
+                <button class="nav-btn" data-tab="add">
+                    <span class="nav-icon">+</span>
+                    <span>Додати</span>
+                </button>
+                <button class="nav-btn" data-tab="stats">
+                    <span class="nav-icon material-icons">bar_chart</span>
+                    <span>Статистика</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
