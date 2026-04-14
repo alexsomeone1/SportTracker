@@ -1,12 +1,11 @@
 package com.example.sporttracker.data
 
 import com.example.sporttracker.db.AppDatabase
+import com.example.sporttracker.db.SportDefinitionEntity
 import com.example.sporttracker.db.TrainingEntity
 import com.example.sporttracker.db.SportCountRow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -21,7 +20,67 @@ class TrainingRepository(
     private val firestoreRepository: FirestoreRepository
 ) {
     private val dao = database.trainingDao()
+    private val sportDao = database.sportDefinitionDao()
     private val scope = CoroutineScope(SupervisorJob())
+
+    fun observeSportDefinitions(): Flow<List<SportDefinitionEntity>> = sportDao.observeAll()
+
+    suspend fun allocateNextSportSortOrder(): Int = sportDao.maxSortOrder() + 1
+
+    suspend fun saveSportDefinition(sport: SportDefinitionEntity) {
+        sportDao.upsert(sport)
+        if (firestoreRepository.isUserSignedIn()) {
+            try {
+                firestoreRepository.saveSportDefinition(sport)
+            } catch (e: Exception) {
+                Log.e("TrainingRepository", "Firestore saveSportDefinition", e)
+                throw e
+            }
+        }
+    }
+
+    suspend fun deleteSportDefinition(sport: SportDefinitionEntity): DeleteSportDefinitionResult {
+        if (sport.isBuiltIn) return DeleteSportDefinitionResult.IsBuiltIn
+        val used = sportDao.countTrainingsUsingSport(sport.id)
+        if (used > 0) return DeleteSportDefinitionResult.InUse(used)
+        sportDao.delete(sport)
+        if (firestoreRepository.isUserSignedIn()) {
+            firestoreRepository.deleteSportDefinition(sport.id)
+        }
+        return DeleteSportDefinitionResult.Deleted
+    }
+
+    /**
+     * Синхронізація каталогу видів спорту з Firestore (upsert + початковий upload якщо хмара порожня).
+     */
+    fun initSportDefinitionsSync() {
+        if (!firestoreRepository.isUserSignedIn()) {
+            Log.d("TrainingRepository", "sportDefinitions sync: користувач не авторизований")
+            return
+        }
+        scope.launch {
+            try {
+                firestoreRepository.observeSportDefinitions().collect { remote ->
+                    if (remote.isEmpty()) {
+                        val local = sportDao.getAll()
+                        if (local.isNotEmpty()) {
+                            local.forEach { def ->
+                                try {
+                                    firestoreRepository.saveSportDefinition(def)
+                                } catch (e: Exception) {
+                                    Log.e("TrainingRepository", "Не вдалося завантажити вид спорту ${def.id}", e)
+                                }
+                            }
+                        }
+                    } else {
+                        remote.forEach { sportDao.upsert(it) }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("TrainingRepository", "Помилка sportDefinitions sync", e)
+            }
+        }
+    }
 
     /**
      * Ініціалізувати real-time синхронізацію з Firestore
@@ -210,9 +269,39 @@ class TrainingRepository(
             }
             
             Log.d("TrainingRepository", "Синхронізація завершена успішно. Синхронізовано ${syncedTrainings.size} тренувань, видалено ${toDelete.size} локальних")
+
+            syncSportDefinitionsOneShot()
         } catch (e: Exception) {
             Log.e("TrainingRepository", "Помилка синхронізації з хмарою", e)
             // Не кидаємо виняток, щоб додаток продовжував працювати з локальними даними
         }
     }
+
+    private suspend fun syncSportDefinitionsOneShot() {
+        if (!firestoreRepository.isUserSignedIn()) return
+        try {
+            var remote = firestoreRepository.getAllSportDefinitions()
+            val local = sportDao.getAll()
+            if (remote.isEmpty() && local.isNotEmpty()) {
+                local.forEach { firestoreRepository.saveSportDefinition(it) }
+                remote = firestoreRepository.getAllSportDefinitions()
+            }
+            remote.forEach { sportDao.upsert(it) }
+            local.filter { it.id !in remote.map { r -> r.id }.toSet() }.forEach { def ->
+                try {
+                    firestoreRepository.saveSportDefinition(def)
+                } catch (e: Exception) {
+                    Log.w("TrainingRepository", "Не вдалося вивантажити вид спорту ${def.id}", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TrainingRepository", "Помилка syncSportDefinitionsOneShot", e)
+        }
+    }
+}
+
+sealed class DeleteSportDefinitionResult {
+    data object Deleted : DeleteSportDefinitionResult()
+    data object IsBuiltIn : DeleteSportDefinitionResult()
+    data class InUse(val trainingCount: Int) : DeleteSportDefinitionResult()
 }

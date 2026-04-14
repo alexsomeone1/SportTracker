@@ -1,5 +1,6 @@
 package com.example.sporttracker.data
 
+import com.example.sporttracker.db.SportDefinitionEntity
 import com.example.sporttracker.db.TrainingEntity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -26,6 +27,10 @@ class FirestoreRepository {
     private fun getUserTrainingsCollection() =
         firestore.collection("users").document(getCurrentUserId())
             .collection("trainings")
+
+    private fun getUserSportDefinitionsCollection() =
+        firestore.collection("users").document(getCurrentUserId())
+            .collection("sportDefinitions")
 
     /**
      * Отримати ID поточного користувача
@@ -209,6 +214,100 @@ class FirestoreRepository {
      * Синхронізувати локальні дані з хмарою
      * Використовується при вході користувача
      */
+    suspend fun saveSportDefinition(sport: SportDefinitionEntity) {
+        if (!isUserSignedIn()) {
+            Log.w("FirestoreRepository", "Користувач не авторизований, пропускаємо збереження виду спорту")
+            return
+        }
+        try {
+            val data = hashMapOf(
+                "id" to sport.id,
+                "nameUa" to sport.nameUa,
+                "emoji" to sport.emoji,
+                "sortOrder" to sport.sortOrder,
+                "isBuiltIn" to sport.isBuiltIn
+            )
+            getUserSportDefinitionsCollection()
+                .document(sport.id)
+                .set(data)
+                .await()
+            Log.d("FirestoreRepository", "Вид спорту збережено в Firestore: ${sport.id}")
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Помилка збереження виду спорту", e)
+            throw e
+        }
+    }
+
+    suspend fun deleteSportDefinition(sportId: String) {
+        if (!isUserSignedIn()) {
+            Log.w("FirestoreRepository", "Користувач не авторизований, пропускаємо видалення виду спорту")
+            return
+        }
+        try {
+            getUserSportDefinitionsCollection()
+                .document(sportId)
+                .delete()
+                .await()
+            Log.d("FirestoreRepository", "Вид спорту видалено з Firestore: $sportId")
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Помилка видалення виду спорту", e)
+        }
+    }
+
+    suspend fun getAllSportDefinitions(): List<SportDefinitionEntity> {
+        if (!isUserSignedIn()) return emptyList()
+        return try {
+            val snapshot = getUserSportDefinitionsCollection()
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { doc -> sportDefinitionFromSnapshot(doc.id, doc.data) }
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Помилка отримання видів спорту", e)
+            emptyList()
+        }
+    }
+
+    fun observeSportDefinitions(): Flow<List<SportDefinitionEntity>> = callbackFlow {
+        if (!isUserSignedIn()) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+        val registration = getUserSportDefinitionsCollection()
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirestoreRepository", "Помилка слухача sportDefinitions", error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        sportDefinitionFromSnapshot(doc.id, doc.data)
+                    }
+                    trySend(list)
+                }
+            }
+        awaitClose { registration.remove() }
+    }
+
+    private fun sportDefinitionFromSnapshot(
+        docId: String,
+        data: Map<String, Any>?
+    ): SportDefinitionEntity? {
+        if (data == null) return null
+        return try {
+            SportDefinitionEntity(
+                id = (data["id"] as? String) ?: docId,
+                nameUa = (data["nameUa"] as? String) ?: "",
+                emoji = (data["emoji"] as? String) ?: "🏅",
+                sortOrder = ((data["sortOrder"] as? Number)?.toInt()) ?: 0,
+                isBuiltIn = data["isBuiltIn"] as? Boolean ?: false
+            )
+        } catch (e: Exception) {
+            Log.e("FirestoreRepository", "Помилка парсингу sportDefinition $docId", e)
+            null
+        }
+    }
+
     suspend fun syncFromCloud(localTrainings: List<TrainingEntity>): List<TrainingEntity> {
         if (!isUserSignedIn()) {
             Log.w("FirestoreRepository", "Користувач не авторизований, синхронізація неможлива")

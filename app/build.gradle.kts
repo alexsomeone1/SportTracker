@@ -4,7 +4,17 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
     id("com.google.gms.google-services")
+}
+
+// Real google-services.json is gitignored; clone a placeholder so debug builds work offline.
+val googleServicesJson = file("google-services.json")
+if (!googleServicesJson.exists()) {
+    val example = file("google-services.json.example")
+    check(example.exists()) {
+        "Missing google-services.json and google-services.json.example. See README for Firebase setup."
     }
+    example.copyTo(googleServicesJson)
+}
 
 android {
     namespace = "com.example.sporttracker"
@@ -14,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.sporttracker"
-        minSdk = 33
+        minSdk = 29
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -77,8 +87,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
     // Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+    kapt("androidx.room:room-compiler:2.7.2")
 
 }

@@ -18,7 +18,7 @@ Android app for logging workouts, viewing statistics, and syncing data with the 
 
 - **Android Studio** (recent stable; project uses AGP 8.13.x, Kotlin 2.0.x)  
 - **JDK 11**  
-- Device or emulator with **API 33+** (`minSdk = 33`)  
+- Device or emulator with **API 29+** (Android 10; `minSdk = 29`)  
 
 ### Setup
 
@@ -56,7 +56,7 @@ Not specified by the author; add a `LICENSE` file if you need one.
 
 - **Android Studio** (актуальна стабільна версія; у проєкті AGP 8.13.x, Kotlin 2.0.x)  
 - **JDK 11**  
-- Пристрій або емулятор з **API 33+** (`minSdk = 33`)  
+- Пристрій або емулятор з **API 29+** (Android 10; `minSdk = 29`)  
 
 ### Налаштування
 

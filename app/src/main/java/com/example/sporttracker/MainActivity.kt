@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +42,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -57,6 +60,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -66,6 +70,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -86,6 +91,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -93,10 +99,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
+import com.example.sporttracker.data.DeleteSportDefinitionResult
 import com.example.sporttracker.data.FirestoreRepository
 import com.example.sporttracker.data.TrainingRepository
 import com.example.sporttracker.db.AppDatabase
+import com.example.sporttracker.db.SportDefinitionEntity
 import com.example.sporttracker.db.TrainingEntity
 import com.example.sporttracker.ui.auth.AuthScreen
 import com.example.sporttracker.ui.auth.AuthViewModel
@@ -105,6 +115,7 @@ import com.example.sporttracker.ui.theme.ButtonCyanActive
 import com.example.sporttracker.ui.theme.ButtonCyanDark
 import com.example.sporttracker.ui.theme.SportTrackerTheme
 import kotlinx.coroutines.launch
+import java.util.UUID
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -179,6 +190,7 @@ private fun AuthWrapper() {
                         val firestoreRepo = FirestoreRepository()
                         val trainingRepo = TrainingRepository(database, firestoreRepo)
                         trainingRepo.initRealTimeSync()
+                        trainingRepo.initSportDefinitionsSync()
                         android.util.Log.d("AuthWrapper", "Real-time sync initialized")
                     } catch (e: Exception) {
                         android.util.Log.e("AuthWrapper", "Помилка ініціалізації real-time sync", e)
@@ -202,28 +214,6 @@ private enum class Tab {
 // Прямокутна форма для кнопок з помірними закругленими кутами
 private val ButtonShape = RoundedCornerShape(12.dp)
 
-private fun sportColor(type: SportType?): Color = when (type) {
-    SportType.GYM -> Color(0xFF7C4DFF)
-    SportType.FOOTBALL -> Color(0xFF2E7D32)
-    SportType.RUNNING -> Color(0xFFFF6D00)
-    SportType.TABLE_TENNIS -> Color(0xFF00838F)
-    SportType.TENNIS -> Color(0xFF43A047)
-    SportType.SWIMMING -> Color(0xFF1565C0)
-    SportType.CYCLING -> Color(0xFF6D4C41)
-    null -> Color(0xFF546E7A)
-}
-
-private fun sportEmoji(type: SportType?): String = when (type) {
-    SportType.GYM -> "🏋️"
-    SportType.FOOTBALL -> "⚽"
-    SportType.RUNNING -> "🏃"
-    SportType.TABLE_TENNIS -> "🏓"
-    SportType.TENNIS -> "🎾"
-    SportType.SWIMMING -> "🏊"
-    SportType.CYCLING -> "🚴"
-    null -> "🏅"
-}
-
 @Composable
 private fun AppRoot() {
     val context = LocalContext.current
@@ -238,6 +228,7 @@ private fun AppRoot() {
             try {
                 android.util.Log.d("AppRoot", "Користувач авторизований, запускаємо real-time sync...")
                 trainingRepo.initRealTimeSync()
+                trainingRepo.initSportDefinitionsSync()
                 android.util.Log.d("AppRoot", "Real-time sync запущено")
             } catch (e: Exception) {
                 android.util.Log.e("AppRoot", "Помилка ініціалізації real-time sync", e)
@@ -449,6 +440,11 @@ private fun ListScreen(
         .getCountFlow(sportFilter, fromDay, toDay)
         .collectAsState(initial = 0)
 
+    val sports: List<SportDefinitionEntity> by trainingRepo
+        .observeSportDefinitions()
+        .collectAsState(initial = emptyList())
+    val sportsById = remember(sports) { sports.associateBy { it.id } }
+
     // --- ui
     Column(
         modifier = modifier
@@ -468,7 +464,9 @@ private fun ListScreen(
 
         // ---- Sport dropdown (self-contained)
         var expanded by remember { mutableStateOf(false) }
-        val selectedSportLabel = if (sportFilter == null) "Усі" else SportType.entries.firstOrNull { it.name == sportFilter }?.ua ?: sportFilter!!
+        val selectedSportLabel = sportFilter?.let { fid ->
+            sportLabelFor(sportsById[fid], fid)
+        } ?: "Усі"
 
         var anchorWidthPx by remember { mutableIntStateOf(0) }
         val anchorWidthDp = with(LocalDensity.current) { anchorWidthPx.toDp() }
@@ -543,9 +541,9 @@ private fun ListScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                         )
                         // Елементи з видами спорту з емодзі
-                SportType.entries.forEach { sport ->
-                            val isSelected = sportFilter == sport.name
-                    DropdownMenuItem(
+                        sports.forEach { sport ->
+                            val isSelected = sportFilter == sport.id
+                            DropdownMenuItem(
                                 text = {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -558,12 +556,12 @@ private fun ListScreen(
                                             textAlign = TextAlign.Center
                                         )
                                         Spacer(Modifier.width(12.dp))
-                                        Text(sport.ua)
+                                        Text(sport.nameUa)
                                     }
                                 },
-                        onClick = {
-                            sportFilter = sport.name
-                            expanded = false
+                                onClick = {
+                                    sportFilter = sport.id
+                                    expanded = false
                                 },
                                 modifier = Modifier.background(
                                     if (isSelected) ButtonCyan.copy(alpha = 0.15f) else Color.Transparent
@@ -725,10 +723,10 @@ private fun ListScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(items) { item ->
-                val sportObj = SportType.entries.firstOrNull { it.name == item.sport }
-                val sportUa = sportObj?.ua ?: item.sport
-                val badgeColor = sportColor(sportObj)
-                val emoji = sportEmoji(sportObj)
+                val def = sportsById[item.sport]
+                val sportUa = sportLabelFor(def, item.sport)
+                val badgeColor = sportColorForId(item.sport)
+                val emoji = sportEmojiFor(def)
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -853,7 +851,12 @@ private fun AddScreen(
 
     val scope = rememberCoroutineScope()
 
-    var selectedSport by remember { mutableStateOf<SportType?>(null) }
+    var selectedSport by remember { mutableStateOf<SportDefinitionEntity?>(null) }
+    var showSportCatalog by remember { mutableStateOf(false) }
+
+    val sports: List<SportDefinitionEntity> by trainingRepo
+        .observeSportDefinitions()
+        .collectAsState(initial = emptyList())
 
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
 
@@ -868,8 +871,8 @@ private fun AddScreen(
     )
 
     fun saveTraining() {
-        val sportName = selectedSport?.name ?: run {
-                Toast.makeText(context, "Спочатку оберіть вид спорту", Toast.LENGTH_SHORT).show()
+        val sportId = selectedSport?.id ?: run {
+            Toast.makeText(context, "Спочатку оберіть вид спорту", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -896,7 +899,7 @@ private fun AddScreen(
         scope.launch {
             trainingRepo.saveTraining(
                 TrainingEntity(
-                    sport = sportName,
+                    sport = sportId,
                     dateEpochDay = selectedDate.toEpochDay(),
                     dateText = selectedDate.format(fmt)
                 )
@@ -910,77 +913,124 @@ private fun AddScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .padding(top = 74.dp),   // ⬅️ опускаємо заголовок вниз
-        verticalArrangement = Arrangement.spacedBy(38.dp) // ⬅️ трішки більше відстань загалом
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-
-        Text(
-            text = "Додати тренування",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
-
-        SportDropdown(
-            selected = selectedSport,
-            onSelected = {
-                selectedSport = it
-            },
-            buttonTextColor = buttonTextColor
-        )
-
-        OutlinedButton(
-            onClick = { showDatePicker = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = ButtonCyan.copy(alpha = 0.1f),
-                contentColor = buttonTextColor
-            ),
-            border = BorderStroke(1.dp, ButtonCyan),
-            shape = ButtonShape,
-            contentPadding = PaddingValues(vertical = 14.dp)
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = true)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(38.dp)
         ) {
-            Row(
+            Text(
+                text = "Додати тренування",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 44.dp),
+                textAlign = TextAlign.Center
+            )
+
+            SportDropdown(
+                sports = sports,
+                selected = selectedSport,
+                onSelected = { selectedSport = it },
+                buttonTextColor = buttonTextColor
+            )
+
+            OutlinedButton(
+                onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = ButtonCyan.copy(alpha = 0.1f),
+                    contentColor = buttonTextColor
+                ),
+                border = BorderStroke(1.dp, ButtonCyan),
+                shape = ButtonShape,
+                contentPadding = PaddingValues(vertical = 14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Дата: ${selectedDate.format(fmt)}",
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            Button(
+                onClick = { saveTraining() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonCyan,
+                    contentColor = buttonTextColor
+                ),
+                contentPadding = PaddingValues(vertical = 14.dp),
+                shape = ButtonShape
             ) {
                 Icon(
-                    imageVector = Icons.Filled.DateRange,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Дата: ${selectedDate.format(fmt)}",
+                    text = "Зберегти",
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 1.sp
                 )
             }
         }
 
-        Button(
-            onClick = { saveTraining() },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonCyan,
-                contentColor = buttonTextColor
-            ),
-            contentPadding = PaddingValues(vertical = 14.dp),
-            shape = ButtonShape
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = null
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "Зберегти",
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.sp
-            )
+            FilledTonalButton(
+                onClick = { showSportCatalog = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = ButtonShape,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = if (isDark) {
+                        ButtonCyanDark.copy(alpha = 0.42f)
+                    } else {
+                        ButtonCyan.copy(alpha = 0.28f)
+                    },
+                    contentColor = buttonTextColor
+                ),
+                contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = "Редагувати види спорту",
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.3.sp
+                    )
+                }
             }
+        }
 
         // Material Date Picker Dialog для "Додати"
         if (showDatePicker) {
@@ -1021,15 +1071,21 @@ private fun AddScreen(
                 )
             }
         }
-
     }
 
+    if (showSportCatalog) {
+        SportCatalogDialog(
+            trainingRepo = trainingRepo,
+            onDismiss = { showSportCatalog = false }
+        )
+    }
 }
 
 @Composable
 private fun SportDropdown(
-    selected: SportType?,
-    onSelected: (SportType) -> Unit,
+    sports: List<SportDefinitionEntity>,
+    selected: SportDefinitionEntity?,
+    onSelected: (SportDefinitionEntity) -> Unit,
     buttonTextColor: Color
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1062,7 +1118,7 @@ private fun SportDropdown(
                 shape = ButtonShape,
             contentPadding = PaddingValues(vertical = 14.dp)
         ) {
-                val displayText = selected?.ua ?: "Оберіть вид спорту"
+                val displayText = selected?.nameUa ?: "Оберіть вид спорту"
                 Text(
                     text = displayText,
                     fontWeight = FontWeight.Medium,
@@ -1081,38 +1137,38 @@ private fun SportDropdown(
                     modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    SportType.entries.forEach { sport ->
+                    sports.forEach { sport ->
                         DropdownMenuItem(
-                                text = { 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Start,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = sport.emoji,
-                                            modifier = Modifier.width(24.dp),
-                                            textAlign = TextAlign.Center
-                                        )
-                                        Spacer(Modifier.width(12.dp))
-                                        Text(sport.ua)
-                                    }
-                                },
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = sport.emoji,
+                                        modifier = Modifier.width(24.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(sport.nameUa)
+                                }
+                            },
                             onClick = {
                                 onSelected(sport)
                                 expanded = false
-                                },
-                                modifier = Modifier.background(
-                                    if (selected == sport) ButtonCyan.copy(alpha = 0.15f) else Color.Transparent
-                                ),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+                            },
+                            modifier = Modifier.background(
+                                if (selected?.id == sport.id) ButtonCyan.copy(alpha = 0.15f) else Color.Transparent
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                         )
                     }
                 }
             }
         }
     }
-}
+    }
 }
 
 @Composable
@@ -1123,6 +1179,11 @@ private fun StatsScreen(
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     val fmt = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy") }
+
+    val sports: List<SportDefinitionEntity> by trainingRepo
+        .observeSportDefinitions()
+        .collectAsState(initial = emptyList())
+    val sportsById = remember(sports) { sports.associateBy { it.id } }
 
     val today = remember { LocalDate.now() }
     // Встановлюємо "Тиждень" як активний фільтр за замовчуванням
@@ -1311,8 +1372,7 @@ private fun StatsScreen(
             .fillMaxSize()
             .navigationBarsPadding()
             .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp)
-                .padding(top = 56.dp, bottom = 16.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
             // Заголовок
@@ -1321,7 +1381,7 @@ private fun StatsScreen(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier
                 .fillMaxWidth()
-                    .padding(top = 24.dp, bottom = 8.dp),
+                    .padding(top = 44.dp),
             textAlign = TextAlign.Center
         )
 
@@ -1444,10 +1504,11 @@ private fun StatsScreen(
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            SportType.entries.forEach { sport ->
-                val count = map[sport.name] ?: 0
-                if (count > 0) {
-                    val badgeColor = sportColor(sport)
+            rows.forEach { row ->
+                val count = row.cnt
+                if (count <= 0) return@forEach
+                val def = sportsById[row.sport]
+                val badgeColor = sportColorForId(row.sport)
                 val bg = badgeColor.copy(alpha = 0.15f)
 
                 Card(
@@ -1464,14 +1525,14 @@ private fun StatsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = sportEmoji(sport), // вже є у тебе
+                            text = sportEmojiFor(def),
                             style = MaterialTheme.typography.titleMedium
                         )
 
                         Spacer(Modifier.width(10.dp))
 
                         Text(
-                            text = sport.ua,          // у тебе вже є ua-підпис у SportType
+                            text = sportLabelFor(def, row.sport),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -1483,7 +1544,6 @@ private fun StatsScreen(
                     }
                 }
             }
-        }
         }
         
         // Додаємо невидимий блок в кінці, щоб картки не ховалися за nav bar
@@ -1508,4 +1568,256 @@ private fun StatsScreen(
             )
         }
     } // Закриваємо Box
+}
+
+private sealed class SportEditorState {
+    data object Hidden : SportEditorState()
+    data class Edit(val sport: SportDefinitionEntity) : SportEditorState()
+    data object CreateNew : SportEditorState()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SportCatalogDialog(
+    trainingRepo: TrainingRepository,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val sports by trainingRepo.observeSportDefinitions().collectAsState(initial = emptyList())
+    var editorState by remember { mutableStateOf<SportEditorState>(SportEditorState.Hidden) }
+    var pendingDelete by remember { mutableStateOf<SportDefinitionEntity?>(null) }
+    val listMaxHeight = remember(configuration.screenHeightDp) {
+        (configuration.screenHeightDp * 0.58f).dp.coerceAtMost(520.dp).coerceAtLeast(220.dp)
+    }
+    val isDarkTheme = isSystemInDarkTheme()
+    val catalogCloseTint = if (isDarkTheme) Color.White else Color.Black
+    val catalogEditTint = if (isDarkTheme) Color.White else Color(0xFF424242)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 24.dp)
+        ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Види спорту", style = MaterialTheme.typography.titleLarge)
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрити",
+                                tint = catalogCloseTint
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = listMaxHeight),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(sports, key = { it.id }) { sport ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(ButtonCyan.copy(alpha = 0.08f))
+                                    .padding(vertical = 10.dp, horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(sport.emoji, style = MaterialTheme.typography.titleMedium)
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    sport.nameUa,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = { editorState = SportEditorState.Edit(sport) }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Edit,
+                                        contentDescription = "Змінити",
+                                        tint = catalogEditTint
+                                    )
+                                }
+                                if (!sport.isBuiltIn) {
+                                    IconButton(onClick = { pendingDelete = sport }) {
+                                        Icon(
+                                            Icons.Outlined.DeleteOutline,
+                                            contentDescription = "Видалити",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { editorState = SportEditorState.CreateNew },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = ButtonCyan),
+                        shape = ButtonShape
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Додати вид спорту")
+                    }
+                }
+            }
+    }
+
+    when (val st = editorState) {
+        is SportEditorState.Edit -> {
+            SportDefinitionEditDialog(
+                title = "Редагувати вид",
+                initialName = st.sport.nameUa,
+                initialEmoji = st.sport.emoji,
+                confirmLabel = "Зберегти",
+                onDismiss = { editorState = SportEditorState.Hidden },
+                onConfirm = { name, emoji ->
+                    scope.launch {
+                        try {
+                            trainingRepo.saveSportDefinition(
+                                st.sport.copy(
+                                    nameUa = name.trim(),
+                                    emoji = emoji.trim().ifBlank { "🏅" }
+                                )
+                            )
+                            Toast.makeText(context, "Збережено", Toast.LENGTH_SHORT).show()
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Помилка збереження", Toast.LENGTH_SHORT).show()
+                        }
+                        editorState = SportEditorState.Hidden
+                    }
+                }
+            )
+        }
+        SportEditorState.CreateNew -> {
+            SportDefinitionEditDialog(
+                title = "Новий вид спорту",
+                initialName = "",
+                initialEmoji = "🏅",
+                confirmLabel = "Додати",
+                onDismiss = { editorState = SportEditorState.Hidden },
+                onConfirm = { name, emoji ->
+                    if (name.isBlank()) {
+                        Toast.makeText(context, "Введіть назву", Toast.LENGTH_SHORT).show()
+                    } else {
+                        scope.launch {
+                            try {
+                                val order = trainingRepo.allocateNextSportSortOrder()
+                                trainingRepo.saveSportDefinition(
+                                    SportDefinitionEntity(
+                                        id = UUID.randomUUID().toString(),
+                                        nameUa = name.trim(),
+                                        emoji = emoji.trim().ifBlank { "🏅" },
+                                        sortOrder = order,
+                                        isBuiltIn = false
+                                    )
+                                )
+                                Toast.makeText(context, "Додано", Toast.LENGTH_SHORT).show()
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Помилка збереження", Toast.LENGTH_SHORT).show()
+                            }
+                            editorState = SportEditorState.Hidden
+                        }
+                    }
+                }
+            )
+        }
+        SportEditorState.Hidden -> Unit
+    }
+
+    pendingDelete?.let { toDel ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Видалити «${toDel.nameUa}»?") },
+            text = {
+                Text("Вид буде прибрано зі списку. Якщо в журналі ще є тренування з цим видом, видалення буде заблоковано.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            when (val r = trainingRepo.deleteSportDefinition(toDel)) {
+                                DeleteSportDefinitionResult.Deleted ->
+                                    Toast.makeText(context, "Видалено", Toast.LENGTH_SHORT).show()
+                                is DeleteSportDefinitionResult.InUse ->
+                                    Toast.makeText(
+                                        context,
+                                        "Є ${r.trainingCount} тренувань з цим видом — спочатку видаліть їх",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                DeleteSportDefinitionResult.IsBuiltIn ->
+                                    Toast.makeText(context, "Неможливо видалити вбудований вид", Toast.LENGTH_SHORT).show()
+                            }
+                            pendingDelete = null
+                        }
+                    }
+                ) {
+                    Text("Видалити", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Скасувати") }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SportDefinitionEditDialog(
+    title: String,
+    initialName: String,
+    initialEmoji: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, emoji: String) -> Unit
+) {
+    var name by remember(title, initialName) { mutableStateOf(initialName) }
+    var emoji by remember(title, initialEmoji) { mutableStateOf(initialEmoji) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Назва") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = emoji,
+                    onValueChange = { emoji = it },
+                    label = { Text("Емодзі") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name, emoji) }) {
+                Text(confirmLabel, color = ButtonCyan)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Скасувати") }
+        }
+    )
 }

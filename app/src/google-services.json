@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "599835124344",
+    "project_id": "sport-tracker-6011e",
+    "storage_bucket": "sport-tracker-6011e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:599835124344:android:4665b5e75fbe863e27c38d",
+        "android_client_info": {
+          "package_name": "com.example.sporttracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "599835124344-8eil37rcrc8962k32s5g1e93ejlg6drf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sporttracker",
+            "certificate_hash": "0c98d51acc35a264dd3fffe1c0bca0c70ae170f4"
+          }
+        },
+        {
+          "client_id": "599835124344-m90dj9l0hvo7ph14bp7dtqd2fbbtp91l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sporttracker",
+            "certificate_hash": "b9ce064be3b5ba6551bf79a485b71ce2f8929053"
+          }
+        },
+        {
+          "client_id": "599835124344-rmfqsu02co1teecugm9f0i7v71scejmc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGBWiiOEjwcCDg1_o0KZX0Q9HNyf2UrlM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "599835124344-rmfqsu02co1teecugm9f0i7v71scejmc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

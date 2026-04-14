@@ -3,7 +3,7 @@ const sports = {
   'RUNNING': { name: 'Біг', emoji: '🏃', color: '#FF6D00' },
   'SWIMMING': { name: 'Плавання', emoji: '🏊', color: '#1565C0' },
   'CYCLING': { name: 'Велосипед', emoji: '🚴', color: '#6D4C41' },
-  'GYM': { name: 'Зал', emoji: '🏋️', color: '#7C4DFF' },
+  'GYM': { name: 'Силове тренування', emoji: '🏋️', color: '#7C4DFF' },
   'TENNIS': { name: 'Теніс', emoji: '🎾', color: '#43A047' },
   'FOOTBALL': { name: 'Футбол', emoji: '⚽', color: '#2E7D32' },
   'BASKETBALL': { name: 'Баскетбол', emoji: '🏀', color: '#546E7A' },

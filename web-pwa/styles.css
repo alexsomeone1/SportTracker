@@ -294,7 +294,9 @@ body {
   margin-bottom: 32px;
 }
 
-#list-tab .header h2 {
+#list-tab .header h2,
+#add-tab .header h2,
+#stats-tab .header h2 {
   margin-bottom: 16px;
 }
 
@@ -750,18 +752,9 @@ body {
 .stats-container {
   position: relative;
   padding: 16px;
-  padding-top: 16px;
+  padding-top: 0;
   min-height: calc(100vh - 80px);
   padding-bottom: 70px;
-}
-
-.stats-title {
-  font-size: 28px;
-  font-weight: 500;
-  color: var(--text-primary);
-  text-align: center;
-  margin: 64px 0 32px 0;
-  padding: 0;
 }
 
 .period-filters {
