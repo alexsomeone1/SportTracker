@@ -189,6 +189,7 @@ private fun AuthWrapper() {
                         val database = AppDatabase.get(context)
                         val firestoreRepo = FirestoreRepository()
                         val trainingRepo = TrainingRepository(database, firestoreRepo)
+                        trainingRepo.ensureBuiltinSportRows()
                         trainingRepo.initRealTimeSync()
                         trainingRepo.initSportDefinitionsSync()
                         android.util.Log.d("AuthWrapper", "Real-time sync initialized")
@@ -224,6 +225,7 @@ private fun AppRoot() {
 
     // Ініціалізуємо real-time синхронізацію з Firestore при відкритті AppRoot
     LaunchedEffect(Unit) {
+        trainingRepo.ensureBuiltinSportRows()
         if (firestoreRepo.isUserSignedIn()) {
             try {
                 android.util.Log.d("AppRoot", "Користувач авторизований, запускаємо real-time sync...")
@@ -1586,6 +1588,9 @@ private fun SportCatalogDialog(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val sports by trainingRepo.observeSportDefinitions().collectAsState(initial = emptyList())
+    LaunchedEffect(Unit) {
+        trainingRepo.ensureBuiltinSportRows()
+    }
     var editorState by remember { mutableStateOf<SportEditorState>(SportEditorState.Hidden) }
     var pendingDelete by remember { mutableStateOf<SportDefinitionEntity?>(null) }
     val listMaxHeight = remember(configuration.screenHeightDp) {
@@ -1668,10 +1673,17 @@ private fun SportCatalogDialog(
                     Button(
                         onClick = { editorState = SportEditorState.CreateNew },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = ButtonCyan),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ButtonCyan,
+                            contentColor = Color.Black
+                        ),
                         shape = ButtonShape
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = null,
+                            tint = Color.Black
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("Додати вид спорту")
                     }

@@ -1,15 +1,470 @@
-// Спортивні види з перекладами та кольорами (як в Android додатку)
-const sports = {
-  'RUNNING': { name: 'Біг', emoji: '🏃', color: '#FF6D00' },
-  'SWIMMING': { name: 'Плавання', emoji: '🏊', color: '#1565C0' },
-  'CYCLING': { name: 'Велосипед', emoji: '🚴', color: '#6D4C41' },
-  'GYM': { name: 'Силове тренування', emoji: '🏋️', color: '#7C4DFF' },
-  'TENNIS': { name: 'Теніс', emoji: '🎾', color: '#43A047' },
-  'FOOTBALL': { name: 'Футбол', emoji: '⚽', color: '#2E7D32' },
-  'BASKETBALL': { name: 'Баскетбол', emoji: '🏀', color: '#546E7A' },
-  'VOLLEYBALL': { name: 'Волейбол', emoji: '🏐', color: '#546E7A' },
-  'TABLE_TENNIS': { name: 'Настільний теніс', emoji: '🏓', color: '#00838F' }
+// Вбудовані види спорту (як у Android: db/BuiltinSportSeeds.kt + міграція 3→4)
+const BUILTIN_SPORT_DEFINITIONS = [
+  { id: 'GYM', nameUa: 'Силове тренування', emoji: '🏋️', sortOrder: 0, isBuiltIn: true },
+  { id: 'FOOTBALL', nameUa: 'Футбол', emoji: '⚽', sortOrder: 1, isBuiltIn: true },
+  { id: 'RUNNING', nameUa: 'Біг', emoji: '🏃', sortOrder: 2, isBuiltIn: true },
+  { id: 'TABLE_TENNIS', nameUa: 'Настільний теніс', emoji: '🏓', sortOrder: 3, isBuiltIn: true },
+  { id: 'TENNIS', nameUa: 'Теніс', emoji: '🎾', sortOrder: 4, isBuiltIn: true },
+  { id: 'SWIMMING', nameUa: 'Плавання', emoji: '🏊', sortOrder: 5, isBuiltIn: true },
+  { id: 'CYCLING', nameUa: 'Велосипед', emoji: '🚴', sortOrder: 6, isBuiltIn: true }
+];
+
+// Кольори бейджів для вбудованих id (як у Android: SportType.kt)
+const BUILTIN_SPORT_COLORS = {
+  GYM: '#7C4DFF',
+  FOOTBALL: '#2E7D32',
+  RUNNING: '#FF6D00',
+  TABLE_TENNIS: '#00838F',
+  TENNIS: '#43A047',
+  SWIMMING: '#1565C0',
+  CYCLING: '#6D4C41'
 };
+
+const FALLBACK_SPORT_COLORS = ['#5C6BC0', '#00897B', '#E65100', '#6A1B9A', '#00695C', '#C62828'];
+
+function sportColorForId(sportId) {
+  if (!sportId) return '#546E7A';
+  const fixed = BUILTIN_SPORT_COLORS[sportId];
+  if (fixed) return fixed;
+  let h = 0;
+  for (let i = 0; i < sportId.length; i++) {
+    h = (h * 31 + sportId.charCodeAt(i)) | 0;
+  }
+  return FALLBACK_SPORT_COLORS[Math.abs(h) % FALLBACK_SPORT_COLORS.length];
+}
+
+function sortSportDefinitions(list) {
+  return [...list].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return (a.nameUa || '').localeCompare(b.nameUa || '', 'uk');
+  });
+}
+
+function parseSportDefinitionDoc(docId, data) {
+  if (!data) return null;
+  try {
+    const emojiRaw = data.emoji != null ? String(data.emoji) : '';
+    return {
+      id: data.id || docId,
+      nameUa: data.nameUa || '',
+      emoji: emojiRaw.trim() ? emojiRaw : '🏅',
+      sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : parseInt(data.sortOrder, 10) || 0,
+      isBuiltIn: data.isBuiltIn === true
+    };
+  } catch (e) {
+    console.error('Помилка парсингу sportDefinition', docId, e);
+    return null;
+  }
+}
+
+/** Каталог з Firestore (users/uid/sportDefinitions), оновлюється listener-ом */
+let sportDefinitions = [];
+
+function sportDisplayInfo(sportId) {
+  const def = sportDefinitions.find((d) => d.id === sportId);
+  const name = def && def.nameUa ? def.nameUa : sportId;
+  const emoji = def && def.emoji ? def.emoji : '🏅';
+  const color = sportColorForId(sportId);
+  return { name, emoji, color };
+}
+
+function escapeHtmlAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function rebuildSportDropdowns() {
+  const filterDropdown = document.getElementById('sport-filter-dropdown');
+  const selectDropdown = document.getElementById('sport-select-dropdown');
+  if (!filterDropdown || !selectDropdown) return;
+
+  const list = sortSportDefinitions(sportDefinitions);
+  const filterRows = [
+    '<div class="sport-filter-item active" data-sport=""><span class="sport-filter-check">✓</span><span>Усі</span></div>',
+    ...list.map(
+      (s) =>
+        `<div class="sport-filter-item" data-sport="${escapeHtmlAttr(s.id)}"><span class="sport-filter-emoji">${s.emoji}</span><span>${escapeHtmlAttr(s.nameUa)}</span></div>`
+    )
+  ].join('');
+
+  const selectRows = [
+    '<div class="sport-filter-item active" data-sport=""><span class="sport-filter-check">✓</span><span>Оберіть вид спорту</span></div>',
+    ...list.map(
+      (s) =>
+        `<div class="sport-filter-item" data-sport="${escapeHtmlAttr(s.id)}"><span class="sport-filter-emoji">${s.emoji}</span><span>${escapeHtmlAttr(s.nameUa)}</span></div>`
+    )
+  ].join('');
+
+  filterDropdown.innerHTML = filterRows;
+  selectDropdown.innerHTML = selectRows;
+
+  const sportFilterText = document.getElementById('sport-filter-text');
+  if (listSportFilter) {
+    const info = sportDisplayInfo(listSportFilter);
+    if (sportFilterText) sportFilterText.textContent = `Вид спорту: ${info.name}`;
+    filterDropdown.querySelectorAll('.sport-filter-item').forEach((el) => {
+      el.classList.toggle('active', (el.dataset.sport || '') === listSportFilter);
+    });
+  } else {
+    if (sportFilterText) sportFilterText.textContent = 'Вид спорту: Усі';
+    filterDropdown.querySelectorAll('.sport-filter-item').forEach((el) => {
+      el.classList.toggle('active', (el.dataset.sport || '') === '');
+    });
+  }
+
+  const sportSelectText = document.getElementById('sport-select-text');
+  if (selectedSport) {
+    const info = sportDisplayInfo(selectedSport);
+    if (sportSelectText) sportSelectText.textContent = info.name;
+    selectDropdown.querySelectorAll('.sport-filter-item').forEach((el) => {
+      el.classList.toggle('active', (el.dataset.sport || '') === selectedSport);
+    });
+  } else {
+    if (sportSelectText) sportSelectText.textContent = 'Оберіть вид спорту';
+    selectDropdown.querySelectorAll('.sport-filter-item').forEach((el) => {
+      el.classList.toggle('active', (el.dataset.sport || '') === '');
+    });
+  }
+}
+
+function seedBuiltinSportDefinitions(uid) {
+  const col = db.collection('users').doc(uid).collection('sportDefinitions');
+  const batch = db.batch();
+  BUILTIN_SPORT_DEFINITIONS.forEach((def) => {
+    batch.set(col.doc(def.id), {
+      id: def.id,
+      nameUa: def.nameUa,
+      emoji: def.emoji,
+      sortOrder: def.sortOrder,
+      isBuiltIn: def.isBuiltIn
+    });
+  });
+  return batch.commit();
+}
+
+let sportDefinitionsListener = null;
+let sportDefinitionsSeedAttempted = false;
+
+function initSportDefinitionsListener() {
+  if (!currentUser) return;
+  if (sportDefinitionsListener) {
+    sportDefinitionsListener();
+    sportDefinitionsListener = null;
+  }
+  sportDefinitionsSeedAttempted = false;
+
+  const col = db.collection('users').doc(currentUser.uid).collection('sportDefinitions');
+  sportDefinitionsListener = col.onSnapshot(
+    (snapshot) => {
+      if (snapshot.empty) {
+        sportDefinitions = sortSportDefinitions(BUILTIN_SPORT_DEFINITIONS.map((d) => ({ ...d })));
+        rebuildSportDropdowns();
+        renderTrainings();
+        updateStats();
+        if (!sportDefinitionsSeedAttempted) {
+          sportDefinitionsSeedAttempted = true;
+          seedBuiltinSportDefinitions(currentUser.uid).catch((err) => {
+            console.error('Помилка сиду sportDefinitions', err);
+            showToast('Не вдалося зберегти каталог видів спорту в хмару');
+          });
+        }
+        refreshSportCatalogIfOpen();
+        return;
+      }
+      sportDefinitionsSeedAttempted = false;
+      const defs = [];
+      snapshot.forEach((doc) => {
+        const parsed = parseSportDefinitionDoc(doc.id, doc.data());
+        if (parsed) defs.push(parsed);
+      });
+      sportDefinitions = sortSportDefinitions(defs);
+      rebuildSportDropdowns();
+      renderTrainings();
+      updateStats();
+      refreshSportCatalogIfOpen();
+    },
+    (error) => {
+      console.error('Помилка listener sportDefinitions:', error);
+      sportDefinitions = sortSportDefinitions(BUILTIN_SPORT_DEFINITIONS.map((d) => ({ ...d })));
+      rebuildSportDropdowns();
+      renderTrainings();
+      updateStats();
+      refreshSportCatalogIfOpen();
+    }
+  );
+}
+
+/** Каталог видів спорту в модалці (як SportCatalogDialog у Android) */
+let sportEditorContext = null; // null | { mode: 'edit', sport } | { mode: 'create' }
+let sportPendingDelete = null;
+
+function refreshSportCatalogIfOpen() {
+  const m = document.getElementById('sport-catalog-modal');
+  if (m && !m.hidden) renderSportCatalogList();
+}
+
+function newSportId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+function allocateNextSportSortOrder() {
+  let max = -1;
+  sportDefinitions.forEach((d) => {
+    if (typeof d.sortOrder === 'number' && d.sortOrder > max) max = d.sortOrder;
+  });
+  return max + 1;
+}
+
+function countTrainingsUsingSport(sportId) {
+  return db
+    .collection('users')
+    .doc(currentUser.uid)
+    .collection('trainings')
+    .where('sport', '==', sportId)
+    .get()
+    .then((snap) => snap.size);
+}
+
+function saveSportDefinitionRemote(def) {
+  return db
+    .collection('users')
+    .doc(currentUser.uid)
+    .collection('sportDefinitions')
+    .doc(def.id)
+    .set({
+      id: def.id,
+      nameUa: def.nameUa,
+      emoji: def.emoji,
+      sortOrder: def.sortOrder,
+      isBuiltIn: def.isBuiltIn
+    });
+}
+
+function setModalVisible(overlay, visible) {
+  if (!overlay) return;
+  overlay.hidden = !visible;
+  overlay.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+function openSportCatalogModal() {
+  if (!currentUser) {
+    showToast('Увійдіть у акаунт');
+    return;
+  }
+  const overlay = document.getElementById('sport-catalog-modal');
+  setModalVisible(overlay, true);
+  renderSportCatalogList();
+}
+
+function closeSportCatalogModal() {
+  setModalVisible(document.getElementById('sport-catalog-modal'), false);
+}
+
+function renderSportCatalogList() {
+  const el = document.getElementById('sport-catalog-list');
+  if (!el) return;
+  const list = sortSportDefinitions(sportDefinitions);
+  el.innerHTML = list
+    .map((s) => {
+      const delBtn = s.isBuiltIn
+        ? ''
+        : `<button type="button" class="sport-catalog-icon-btn material-icons sport-catalog-delete" data-sport-del="${escapeHtmlAttr(s.id)}" aria-label="Видалити">delete_outline</button>`;
+      return `<div class="sport-catalog-row" data-sport-id="${escapeHtmlAttr(s.id)}">
+        <span class="sport-catalog-emoji">${s.emoji}</span>
+        <span class="sport-catalog-name">${escapeHtmlAttr(s.nameUa)}</span>
+        <button type="button" class="sport-catalog-icon-btn material-icons" data-sport-edit="${escapeHtmlAttr(s.id)}" aria-label="Змінити">edit</button>
+        ${delBtn}
+      </div>`;
+    })
+    .join('');
+}
+
+function openSportEditorCreate() {
+  sportEditorContext = { mode: 'create' };
+  document.getElementById('sport-editor-title').textContent = 'Новий вид спорту';
+  document.getElementById('sport-editor-name').value = '';
+  document.getElementById('sport-editor-emoji').value = '🏅';
+  const saveBtn = document.getElementById('sport-editor-save');
+  if (saveBtn) saveBtn.textContent = 'Додати';
+  setModalVisible(document.getElementById('sport-editor-modal'), true);
+  document.getElementById('sport-editor-name').focus();
+}
+
+function openSportEditorEdit(sport) {
+  sportEditorContext = { mode: 'edit', sport: { ...sport } };
+  document.getElementById('sport-editor-title').textContent = 'Редагувати вид';
+  document.getElementById('sport-editor-name').value = sport.nameUa || '';
+  document.getElementById('sport-editor-emoji').value = sport.emoji || '🏅';
+  const saveBtn = document.getElementById('sport-editor-save');
+  if (saveBtn) saveBtn.textContent = 'Зберегти';
+  setModalVisible(document.getElementById('sport-editor-modal'), true);
+  document.getElementById('sport-editor-name').focus();
+}
+
+function closeSportEditorModal() {
+  sportEditorContext = null;
+  setModalVisible(document.getElementById('sport-editor-modal'), false);
+}
+
+function confirmSportEditor() {
+  const nameEl = document.getElementById('sport-editor-name');
+  const emojiEl = document.getElementById('sport-editor-emoji');
+  const name = (nameEl && nameEl.value.trim()) || '';
+  const emojiRaw = emojiEl && emojiEl.value != null ? emojiEl.value.trim() : '';
+  const emoji = emojiRaw || '🏅';
+
+  if (!sportEditorContext) return;
+
+  if (sportEditorContext.mode === 'create') {
+    if (!name) {
+      showToast('Введіть назву');
+      return;
+    }
+    const def = {
+      id: newSportId(),
+      nameUa: name,
+      emoji,
+      sortOrder: allocateNextSportSortOrder(),
+      isBuiltIn: false
+    };
+    saveSportDefinitionRemote(def)
+      .then(() => {
+        showToast('Додано');
+        closeSportEditorModal();
+      })
+      .catch((err) => {
+        console.error(err);
+        showToast('Помилка збереження');
+      });
+    return;
+  }
+
+  if (sportEditorContext.mode === 'edit') {
+    const base = sportEditorContext.sport;
+    const def = {
+      ...base,
+      nameUa: name || base.nameUa,
+      emoji,
+      sortOrder: base.sortOrder,
+      isBuiltIn: base.isBuiltIn
+    };
+    saveSportDefinitionRemote(def)
+      .then(() => {
+        showToast('Збережено');
+        closeSportEditorModal();
+      })
+      .catch((err) => {
+        console.error(err);
+        showToast('Помилка збереження');
+      });
+  }
+}
+
+function openSportDeleteConfirm(sport) {
+  sportPendingDelete = sport;
+  document.getElementById('sport-delete-title').textContent = `Видалити «${sport.nameUa}»?`;
+  document.getElementById('sport-delete-text').textContent =
+    'Вид буде прибрано зі списку. Якщо в журналі ще є тренування з цим видом, видалення буде заблоковано.';
+  setModalVisible(document.getElementById('sport-delete-modal'), true);
+}
+
+function closeSportDeleteModal() {
+  sportPendingDelete = null;
+  setModalVisible(document.getElementById('sport-delete-modal'), false);
+}
+
+function confirmSportDelete() {
+  const sport = sportPendingDelete;
+  if (!sport || !currentUser) {
+    closeSportDeleteModal();
+    return;
+  }
+  if (sport.isBuiltIn) {
+    showToast('Неможливо видалити вбудований вид');
+    closeSportDeleteModal();
+    return;
+  }
+  countTrainingsUsingSport(sport.id)
+    .then((n) => {
+      if (n > 0) {
+        showToast(`Є ${n} тренувань з цим видом — спочатку видаліть їх`);
+        closeSportDeleteModal();
+        return Promise.reject(new Error('sport-delete-skip'));
+      }
+      return db
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('sportDefinitions')
+        .doc(sport.id)
+        .delete();
+    })
+    .then(() => {
+      showToast('Видалено');
+      closeSportDeleteModal();
+    })
+    .catch((err) => {
+      if (err && err.message === 'sport-delete-skip') return;
+      console.error(err);
+      showToast('Помилка видалення');
+      closeSportDeleteModal();
+    });
+}
+
+function initSportCatalogModals() {
+  const catalog = document.getElementById('sport-catalog-modal');
+  const editor = document.getElementById('sport-editor-modal');
+  const delModal = document.getElementById('sport-delete-modal');
+  const editSportsBtn = document.getElementById('edit-sports-btn');
+
+  if (catalog) {
+    catalog.addEventListener('click', (e) => {
+      if (e.target === catalog) closeSportCatalogModal();
+    });
+    document.getElementById('sport-catalog-close')?.addEventListener('click', closeSportCatalogModal);
+    document.getElementById('sport-catalog-add-btn')?.addEventListener('click', () => {
+      openSportEditorCreate();
+    });
+    document.getElementById('sport-catalog-list')?.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-sport-edit]');
+      if (editBtn) {
+        const id = editBtn.getAttribute('data-sport-edit');
+        const sport = sportDefinitions.find((x) => x.id === id);
+        if (sport) openSportEditorEdit(sport);
+        return;
+      }
+      const delBtn = e.target.closest('[data-sport-del]');
+      if (delBtn) {
+        const id = delBtn.getAttribute('data-sport-del');
+        const sport = sportDefinitions.find((x) => x.id === id);
+        if (sport) openSportDeleteConfirm(sport);
+      }
+    });
+  }
+
+  if (editor) {
+    editor.addEventListener('click', (e) => {
+      if (e.target === editor) closeSportEditorModal();
+    });
+    document.getElementById('sport-editor-cancel')?.addEventListener('click', closeSportEditorModal);
+    document.getElementById('sport-editor-save')?.addEventListener('click', confirmSportEditor);
+  }
+
+  if (delModal) {
+    delModal.addEventListener('click', (e) => {
+      if (e.target === delModal) closeSportDeleteModal();
+    });
+    document.getElementById('sport-delete-cancel')?.addEventListener('click', closeSportDeleteModal);
+    document.getElementById('sport-delete-confirm')?.addEventListener('click', confirmSportDelete);
+  }
+
+  editSportsBtn?.addEventListener('click', () => openSportCatalogModal());
+}
 
 let currentUser = null;
 let trainings = [];
@@ -84,10 +539,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   
+  sportDefinitions = sortSportDefinitions(BUILTIN_SPORT_DEFINITIONS.map((d) => ({ ...d })));
+  rebuildSportDropdowns();
+  initSportDropdownDelegation();
+
   initAuth();
   initNavigation();
   initForms();
   initListFilters();
+  initSportCatalogModals();
   registerServiceWorker();
   
   // Відновлюємо збережену вкладку буде виконано в showMainScreen
@@ -112,6 +572,75 @@ function registerServiceWorker() {
 }
 
 // Авторизація
+function initSportDropdownDelegation() {
+  const sportFilterBtn = document.getElementById('sport-filter-btn');
+  const sportFilterDropdown = document.getElementById('sport-filter-dropdown');
+  const sportSelectBtn = document.getElementById('sport-select-btn');
+  const sportSelectDropdown = document.getElementById('sport-select-dropdown');
+
+  if (sportFilterBtn && sportFilterDropdown) {
+    sportFilterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sportFilterDropdown.classList.toggle('active');
+    });
+  }
+  if (sportSelectBtn && sportSelectDropdown) {
+    sportSelectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sportSelectDropdown.classList.toggle('active');
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const fd = document.getElementById('sport-filter-dropdown');
+    const sd = document.getElementById('sport-select-dropdown');
+    const fb = document.getElementById('sport-filter-btn');
+    const sb = document.getElementById('sport-select-btn');
+
+    const filterItem = e.target.closest('#sport-filter-dropdown .sport-filter-item');
+    if (filterItem && fd && fd.contains(filterItem)) {
+      const sport = filterItem.dataset.sport || null;
+      listSportFilter = sport || null;
+      const sportFilterText = document.getElementById('sport-filter-text');
+      if (!sport) {
+        if (sportFilterText) sportFilterText.textContent = 'Вид спорту: Усі';
+      } else {
+        const info = sportDisplayInfo(sport);
+        if (sportFilterText) sportFilterText.textContent = `Вид спорту: ${info.name}`;
+      }
+      fd.querySelectorAll('.sport-filter-item').forEach((i) => i.classList.remove('active'));
+      filterItem.classList.add('active');
+      fd.classList.remove('active');
+      renderTrainings();
+      return;
+    }
+
+    const selectItem = e.target.closest('#sport-select-dropdown .sport-filter-item');
+    if (selectItem && sd && sd.contains(selectItem)) {
+      const sport = selectItem.dataset.sport || null;
+      selectedSport = sport || null;
+      const sportSelectText = document.getElementById('sport-select-text');
+      if (!sport) {
+        if (sportSelectText) sportSelectText.textContent = 'Оберіть вид спорту';
+      } else {
+        const info = sportDisplayInfo(sport);
+        if (sportSelectText) sportSelectText.textContent = info.name;
+      }
+      sd.querySelectorAll('.sport-filter-item').forEach((i) => i.classList.remove('active'));
+      selectItem.classList.add('active');
+      sd.classList.remove('active');
+      return;
+    }
+
+    if (fb && fd && !fb.contains(e.target) && !fd.contains(e.target)) {
+      fd.classList.remove('active');
+    }
+    if (sb && sd && !sb.contains(e.target) && !sd.contains(e.target)) {
+      sd.classList.remove('active');
+    }
+  });
+}
+
 function initAuth() {
   auth.onAuthStateChanged((user) => {
     if (user) {
@@ -119,6 +648,7 @@ function initAuth() {
       showMainScreen();
       // Ініціалізуємо real-time listener замість одноразового завантаження
       initTrainingsListener();
+      initSportDefinitionsListener();
     } else {
       currentUser = null;
       trainings = [];
@@ -127,6 +657,14 @@ function initAuth() {
         trainingsListener();
         trainingsListener = null;
       }
+      if (sportDefinitionsListener) {
+        sportDefinitionsListener();
+        sportDefinitionsListener = null;
+      }
+      listSportFilter = null;
+      selectedSport = null;
+      sportDefinitions = sortSportDefinitions(BUILTIN_SPORT_DEFINITIONS.map((d) => ({ ...d })));
+      rebuildSportDropdowns();
       showAuthScreen();
     }
   });
@@ -218,7 +756,11 @@ function signOut() {
     trainingsListener();
     trainingsListener = null;
   }
-  
+  if (sportDefinitionsListener) {
+    sportDefinitionsListener();
+    sportDefinitionsListener = null;
+  }
+
   auth.signOut()
     .then(() => {
       showToast('Вихід виконано');
@@ -909,59 +1451,6 @@ function initListFilters() {
       }, true);
     }
   }
-  
-  // Обробник фільтру виду спорту (кастомний dropdown)
-  const sportFilterBtn = document.getElementById('sport-filter-btn');
-  const sportFilterDropdown = document.getElementById('sport-filter-dropdown');
-  const sportFilterText = document.getElementById('sport-filter-text');
-  const sportFilterItems = document.querySelectorAll('.sport-filter-item');
-  
-  if (sportFilterBtn && sportFilterDropdown) {
-    // Відкриття/закриття dropdown
-    sportFilterBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      sportFilterDropdown.classList.toggle('active');
-    });
-    
-    // Закриття при кліку поза меню
-    document.addEventListener('click', (e) => {
-      if (!sportFilterBtn.contains(e.target) && !sportFilterDropdown.contains(e.target)) {
-        sportFilterDropdown.classList.remove('active');
-      }
-    });
-    
-    // Обробка вибору елемента
-    sportFilterItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const sport = item.dataset.sport || null;
-        listSportFilter = sport;
-        
-        // Оновлюємо текст кнопки
-        if (sport === null || sport === '') {
-          sportFilterText.textContent = 'Вид спорту: Усі';
-        } else {
-          const sportInfo = sports[sport] || { name: sport };
-          sportFilterText.textContent = `Вид спорту: ${sportInfo.name}`;
-        }
-        
-        // Оновлюємо активний елемент
-        sportFilterItems.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Закриваємо dropdown
-        sportFilterDropdown.classList.remove('active');
-        
-        // Оновлюємо список
-        renderTrainings();
-      });
-    });
-    
-    // Встановлюємо "Усі" як активний за замовчуванням
-    const allItem = document.querySelector('.sport-filter-item[data-sport=""]');
-    if (allItem) {
-      allItem.classList.add('active');
-    }
-  }
 }
 
 // Функція для форматування дати для input (YYYY-MM-DD)
@@ -1016,7 +1505,7 @@ function renderTrainings() {
   }
 
   list.innerHTML = filtered.map(training => {
-    const sport = sports[training.sport] || { name: training.sport, emoji: '🏅', color: '#546E7A' };
+    const sport = sportDisplayInfo(training.sport);
     const date = new Date(training.dateEpochDay * 86400000).toLocaleDateString('uk-UA');
     const borderColor = sport.color;
     const bgColor = hexToRgba(sport.color, 0.12);
@@ -1046,57 +1535,7 @@ function hexToRgba(hex, alpha) {
 // Додавання тренування
 function initForms() {
   document.getElementById('save-training-btn').addEventListener('click', saveTraining);
-  
-  // Ініціалізація кастомного dropdown для вибору виду спорту
-  const sportSelectBtn = document.getElementById('sport-select-btn');
-  const sportSelectDropdown = document.getElementById('sport-select-dropdown');
-  const sportSelectText = document.getElementById('sport-select-text');
-  const sportSelectItems = document.querySelectorAll('#sport-select-dropdown .sport-filter-item');
-  
-  if (sportSelectBtn && sportSelectDropdown && sportSelectText) {
-    // Відкриття/закриття dropdown
-    sportSelectBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      sportSelectDropdown.classList.toggle('active');
-    });
-    
-    // Закриття при кліку поза меню
-    document.addEventListener('click', (e) => {
-      if (!sportSelectBtn.contains(e.target) && !sportSelectDropdown.contains(e.target)) {
-        sportSelectDropdown.classList.remove('active');
-      }
-    });
-    
-    // Обробка вибору елемента
-    sportSelectItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const sport = item.dataset.sport || null;
-        selectedSport = sport;
-        
-        // Оновлюємо текст кнопки
-        if (sport === null || sport === '') {
-          sportSelectText.textContent = 'Оберіть вид спорту';
-        } else {
-          const sportInfo = sports[sport] || { name: sport };
-          sportSelectText.textContent = sportInfo.name;
-        }
-        
-        // Оновлюємо активний елемент
-        sportSelectItems.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Закриваємо dropdown
-        sportSelectDropdown.classList.remove('active');
-      });
-    });
-    
-    // Встановлюємо "Оберіть вид спорту" як активний за замовчуванням
-    const placeholderItem = document.querySelector('#sport-select-dropdown .sport-filter-item[data-sport=""]');
-    if (placeholderItem) {
-      placeholderItem.classList.add('active');
-    }
-  }
-  
+
   // Ініціалізація кнопки вибору дати
   const datePickerBtn = document.getElementById('date-picker-btn');
   const dateInput = document.getElementById('date-input');
@@ -1305,7 +1744,7 @@ function updateStats() {
   const cardsHtml = Object.entries(bySport)
     .sort((a, b) => b[1] - a[1])
     .map(([sport, count]) => {
-      const sportInfo = sports[sport] || { name: sport, emoji: '🏅', color: '#546E7A' };
+      const sportInfo = sportDisplayInfo(sport);
       const badgeColor = sportInfo.color;
       const bgColor = hexToRgba(badgeColor, 0.15);
       const borderColor = hexToRgba(badgeColor, 0.35);

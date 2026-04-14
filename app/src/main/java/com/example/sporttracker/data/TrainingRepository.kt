@@ -1,14 +1,17 @@
 package com.example.sporttracker.data
 
 import com.example.sporttracker.db.AppDatabase
+import com.example.sporttracker.db.builtinSportDefinitions
 import com.example.sporttracker.db.SportDefinitionEntity
 import com.example.sporttracker.db.TrainingEntity
 import com.example.sporttracker.db.SportCountRow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
 import android.util.Log
 
 /**
@@ -24,6 +27,13 @@ class TrainingRepository(
     private val scope = CoroutineScope(SupervisorJob())
 
     fun observeSportDefinitions(): Flow<List<SportDefinitionEntity>> = sportDao.observeAll()
+
+    /**
+     * Гарантує наявність вбудованих видів спорту в Room (через DAO, щоб Flow оновився).
+     */
+    suspend fun ensureBuiltinSportRows() = withContext(Dispatchers.IO) {
+        builtinSportDefinitions().forEach { sportDao.insertIgnore(it) }
+    }
 
     suspend fun allocateNextSportSortOrder(): Int = sportDao.maxSortOrder() + 1
 
@@ -60,6 +70,7 @@ class TrainingRepository(
         }
         scope.launch {
             try {
+                ensureBuiltinSportRows()
                 firestoreRepository.observeSportDefinitions().collect { remote ->
                     if (remote.isEmpty()) {
                         val local = sportDao.getAll()
@@ -280,6 +291,7 @@ class TrainingRepository(
     private suspend fun syncSportDefinitionsOneShot() {
         if (!firestoreRepository.isUserSignedIn()) return
         try {
+            ensureBuiltinSportRows()
             var remote = firestoreRepository.getAllSportDefinitions()
             val local = sportDao.getAll()
             if (remote.isEmpty() && local.isNotEmpty()) {

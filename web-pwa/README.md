@@ -30,6 +30,9 @@ service cloud.firestore {
     match /users/{userId}/trainings/{trainingId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    match /users/{userId}/sportDefinitions/{sportId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 ```

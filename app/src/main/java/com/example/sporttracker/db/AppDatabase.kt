@@ -32,6 +32,17 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     // Міграція 1→2 залишена для старих інсталяцій
                     .addMigrations(MIGRATION_1_TO_2, MIGRATION_2_TO_3, MIGRATION_3_TO_4)
+                    .addCallback(
+                        object : RoomDatabase.Callback() {
+                            override fun onCreate(db: SupportSQLiteDatabase) {
+                                insertBuiltinSportSeeds(db)
+                            }
+
+                            override fun onOpen(db: SupportSQLiteDatabase) {
+                                insertBuiltinSportSeeds(db)
+                            }
+                        }
+                    )
                     .build()
                 INSTANCE = db
                 db

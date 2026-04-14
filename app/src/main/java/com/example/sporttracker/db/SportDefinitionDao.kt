@@ -22,6 +22,9 @@ interface SportDefinitionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: SportDefinitionEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIgnore(item: SportDefinitionEntity)
+
     @Delete
     suspend fun delete(item: SportDefinitionEntity)
 

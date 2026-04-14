@@ -17,20 +17,6 @@ val MIGRATION_3_TO_4 = object : Migration(3, 4) {
             )
             """.trimIndent()
         )
-        val seeds = listOf(
-            Triple("GYM", "Силове тренування", "🏋️"),
-            Triple("FOOTBALL", "Футбол", "⚽"),
-            Triple("RUNNING", "Біг", "🏃"),
-            Triple("TABLE_TENNIS", "Настільний теніс", "🏓"),
-            Triple("TENNIS", "Теніс", "🎾"),
-            Triple("SWIMMING", "Плавання", "🏊"),
-            Triple("CYCLING", "Велосипед", "🚴")
-        )
-        seeds.forEachIndexed { index, (id, name, emoji) ->
-            database.execSQL(
-                "INSERT OR IGNORE INTO sport_definitions (id, nameUa, emoji, sortOrder, isBuiltIn) VALUES (?, ?, ?, ?, 1)",
-                arrayOf<Any>(id, name, emoji, index)
-            )
-        }
+        insertBuiltinSportSeeds(database)
     }
 }

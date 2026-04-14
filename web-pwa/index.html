@@ -186,6 +186,12 @@
                             <span>Зберегти</span>
                         </button>
                     </div>
+                    <div class="form-group form-group-tonal">
+                        <button type="button" id="edit-sports-btn" class="btn btn-tonal">
+                            <span class="material-icons">edit</span>
+                            <span>Редагувати види спорту</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -237,6 +243,50 @@
                     <span>Статистика</span>
                 </button>
             </nav>
+        </div>
+    </div>
+
+    <!-- Каталог видів спорту (як у Android) -->
+    <div id="sport-catalog-modal" class="modal-overlay" hidden>
+        <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="sport-catalog-title">
+            <div class="modal-header">
+                <h3 id="sport-catalog-title">Види спорту</h3>
+                <button type="button" class="modal-close-btn material-icons" id="sport-catalog-close" aria-label="Закрити">close</button>
+            </div>
+            <div id="sport-catalog-list" class="sport-catalog-list"></div>
+            <div class="modal-footer-actions">
+                <button type="button" id="sport-catalog-add-btn" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    <span>Додати вид спорту</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sport-editor-modal" class="modal-overlay" hidden>
+        <div class="modal-sheet modal-sheet-compact" role="dialog" aria-modal="true">
+            <h3 id="sport-editor-title" class="modal-title-block">Редагувати вид</h3>
+            <div class="modal-form">
+                <label class="modal-label" for="sport-editor-name">Назва</label>
+                <input type="text" id="sport-editor-name" class="modal-input" maxlength="120" autocomplete="off">
+                <label class="modal-label" for="sport-editor-emoji">Емодзі</label>
+                <input type="text" id="sport-editor-emoji" class="modal-input modal-input-emoji" maxlength="8" autocomplete="off">
+            </div>
+            <div class="modal-actions-row">
+                <button type="button" id="sport-editor-cancel" class="btn-text">Скасувати</button>
+                <button type="button" id="sport-editor-save" class="btn btn-primary btn-inline">Зберегти</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sport-delete-modal" class="modal-overlay" hidden>
+        <div class="modal-sheet modal-sheet-compact" role="dialog" aria-modal="true">
+            <h3 id="sport-delete-title" class="modal-title-block">Видалити вид?</h3>
+            <p id="sport-delete-text" class="modal-body-text"></p>
+            <div class="modal-actions-row">
+                <button type="button" id="sport-delete-cancel" class="btn-text">Скасувати</button>
+                <button type="button" id="sport-delete-confirm" class="btn btn-danger-inline">Видалити</button>
+            </div>
         </div>
     </div>
 
