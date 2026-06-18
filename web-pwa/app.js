@@ -942,6 +942,10 @@ function initNavigation() {
 
   // Ініціалізація свайпу між вкладками
   initSwipeNavigation();
+
+  window.addEventListener('resize', () => {
+    updateNavHumpCenter(getCurrentTab());
+  });
 }
 
 // Функція для оновлення стану кнопок навігації (блокування, якщо досягнуто поточної дати)
@@ -975,6 +979,18 @@ function updateNavButtons() {
   }
 }
 
+function updateNavHumpCenter(tabName) {
+  const bottomNav = document.querySelector('.bottom-nav');
+  const btn = bottomNav?.querySelector(`.nav-btn[data-tab="${tabName}"]`);
+  if (!bottomNav || !btn) return;
+
+  const navRect = bottomNav.getBoundingClientRect();
+  const btnRect = btn.getBoundingClientRect();
+  const centerPx = btnRect.left + btnRect.width / 2 - navRect.left;
+  const centerPercent = (centerPx / navRect.width) * 100;
+  bottomNav.style.setProperty('--active-center', `${centerPercent}%`);
+}
+
 function switchTab(tabName) {
   // Зберігаємо поточну вкладку в localStorage
   localStorage.setItem('sportTrackerActiveTab', tabName);
@@ -983,6 +999,8 @@ function switchTab(tabName) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
   });
+
+  updateNavHumpCenter(tabName);
 
   // Оновлюємо контейнер вкладок для анімації
   const tabsContainer = document.getElementById('tabs-container');

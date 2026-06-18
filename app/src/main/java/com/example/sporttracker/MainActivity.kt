@@ -1,5 +1,7 @@
 package com.example.sporttracker
 
+import android.graphics.BlurMaskFilter
+import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -7,13 +9,19 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,20 +42,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -68,9 +78,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -92,6 +99,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -251,6 +263,213 @@ private fun SportCardIcon(
 }
 
 @Composable
+private fun AnimatedBottomNavBar(
+    selectedTab: Tab,
+    onTabSelected: (Tab) -> Unit
+) {
+    val selectedIndex = Tab.entries.indexOf(selectedTab)
+    val navColor = Color(0xFF202229)
+    val humpBaseline = 42.dp
+    val humpRise = 24.dp
+    val barHeight = 90.dp
+    val horizontalInset = 18.dp
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(barHeight + humpBaseline)
+            .navigationBarsPadding()
+    ) {
+        val humpCenterX by animateDpAsState(
+            targetValue = horizontalInset +
+                (maxWidth - horizontalInset * 2) * (selectedIndex + 0.5f) / Tab.entries.size,
+            animationSpec = tween(durationMillis = 380),
+            label = "navHumpCenterX"
+        )
+
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val topY = humpBaseline.toPx()
+            val corner = 22.dp.toPx()
+            val humpWidth = 110.dp.toPx()
+            val rise = humpRise.toPx()
+            val centerX = humpCenterX.toPx()
+            val left = (centerX - humpWidth / 2f).coerceAtLeast(corner)
+            val right = (centerX + humpWidth / 2f).coerceAtMost(size.width - corner)
+
+            val navPath = Path().apply {
+                moveTo(0f, size.height)
+                lineTo(0f, topY + corner)
+                quadraticTo(0f, topY, corner, topY)
+                lineTo(left, topY)
+                cubicTo(
+                    left + 18.dp.toPx(),
+                    topY,
+                    centerX - 32.dp.toPx(),
+                    topY - rise,
+                    centerX,
+                    topY - rise
+                )
+                cubicTo(
+                    centerX + 32.dp.toPx(),
+                    topY - rise,
+                    right - 18.dp.toPx(),
+                    topY,
+                    right,
+                    topY
+                )
+                lineTo(size.width - corner, topY)
+                quadraticTo(size.width, topY, size.width, topY + corner)
+                lineTo(size.width, size.height)
+                close()
+            }
+
+            val topEdgePath = Path().apply {
+                moveTo(corner, topY)
+                lineTo(left, topY)
+                cubicTo(
+                    left + 18.dp.toPx(),
+                    topY,
+                    centerX - 32.dp.toPx(),
+                    topY - rise,
+                    centerX,
+                    topY - rise
+                )
+                cubicTo(
+                    centerX + 32.dp.toPx(),
+                    topY - rise,
+                    right - 18.dp.toPx(),
+                    topY,
+                    right,
+                    topY
+                )
+                lineTo(size.width - corner, topY)
+            }
+
+            drawIntoCanvas { canvas ->
+                val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 12.dp.toPx()
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                    color = android.graphics.Color.argb(150, 0, 0, 0)
+                    maskFilter = BlurMaskFilter(16.dp.toPx(), BlurMaskFilter.Blur.NORMAL)
+                }
+                canvas.nativeCanvas.save()
+                canvas.nativeCanvas.translate(0f, -4.dp.toPx())
+                canvas.nativeCanvas.drawPath(topEdgePath.asAndroidPath(), shadowPaint)
+                canvas.nativeCanvas.restore()
+            }
+
+            drawPath(path = navPath, color = navColor)
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(barHeight + humpBaseline)
+                .align(Alignment.TopCenter)
+                .offset(y = 15.dp)
+                .padding(start = horizontalInset, top = 24.dp, end = horizontalInset),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Tab.entries.forEach { tab ->
+                AnimatedNavItem(
+                    tab = tab,
+                    selected = selectedTab == tab,
+                    onClick = { onTabSelected(tab) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnimatedNavItem(
+    tab: Tab,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val iconOffset by animateDpAsState(
+        targetValue = if (selected) (-8).dp else 0.dp,
+        animationSpec = tween(durationMillis = 280),
+        label = "navIconOffset"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) ButtonCyanActive else Color.White.copy(alpha = 0.62f),
+        animationSpec = tween(durationMillis = 220),
+        label = "navIconColor"
+    )
+    val labelColor by animateColorAsState(
+        targetValue = if (selected) ButtonCyanActive else Color.White.copy(alpha = 0.58f),
+        animationSpec = tween(durationMillis = 220),
+        label = "navLabelColor"
+    )
+    Column(
+        modifier = modifier
+            .height(108.dp)
+            .clickable(onClick = onClick)
+            .padding(bottom = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Bottom
+    ) {
+        Box(
+            modifier = Modifier
+                .size(if (selected) 54.dp else 42.dp)
+                .offset(y = iconOffset),
+            contentAlignment = Alignment.Center
+        ) {
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF242832))
+                        .border(2.dp, ButtonCyanActive, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = navIconFor(tab),
+                        contentDescription = navLabelFor(tab),
+                        tint = iconColor,
+                        modifier = Modifier.size(if (tab == Tab.ADD) 32.dp else 27.dp)
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = navIconFor(tab),
+                    contentDescription = navLabelFor(tab),
+                    tint = iconColor,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+        Text(
+            text = navLabelFor(tab),
+            color = labelColor,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+        )
+    }
+}
+
+private fun navLabelFor(tab: Tab): String =
+    when (tab) {
+        Tab.LIST -> "Список"
+        Tab.ADD -> "Додати"
+        Tab.STATS -> "Статистика"
+    }
+
+private fun navIconFor(tab: Tab): ImageVector =
+    when (tab) {
+        Tab.LIST -> Icons.AutoMirrored.Filled.FormatListBulleted
+        Tab.ADD -> Icons.Filled.Add
+        Tab.STATS -> Icons.Filled.BarChart
+    }
+
+@Composable
 private fun AppRoot() {
     val context = LocalContext.current
     val database = remember { AppDatabase.get(context) }
@@ -282,89 +501,17 @@ private fun AppRoot() {
 
     Scaffold(
         bottomBar = {
-            val isDark = isSystemInDarkTheme()
-            val navBg = if (isDark) ButtonCyanDark else ButtonCyan
-            val activeBg = ButtonCyanActive
-            val activeIcon = Color.White
-            val inactiveIcon = Color.White.copy(alpha = 0.7f)
-
-            Surface(
-                color = navBg,
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                NavigationBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = Color.Transparent,
-                    tonalElevation = 0.dp
-                ) {
-                    NavigationBarItem(
-                        selected = selectedTab == Tab.LIST,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = Tab.entries.indexOf(Tab.LIST),
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                        },
-                        icon = { Icon(Icons.Filled.Menu, contentDescription = "Список") },
-                        label = { Text("Список") },
-                        alwaysShowLabel = true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = activeIcon,
-                            selectedTextColor = activeIcon,
-                            unselectedIconColor = inactiveIcon,
-                            unselectedTextColor = inactiveIcon,
-                            indicatorColor = activeBg
+            AnimatedBottomNavBar(
+                selectedTab = selectedTab,
+                onTabSelected = { tab ->
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(
+                            page = Tab.entries.indexOf(tab),
+                            animationSpec = tween(durationMillis = 300)
                         )
-                    )
-
-                    NavigationBarItem(
-                        selected = selectedTab == Tab.ADD,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = Tab.entries.indexOf(Tab.ADD),
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                        },
-                        icon = { Icon(Icons.Filled.Add, contentDescription = "Додати") },
-                        label = { Text("Додати") },
-                        alwaysShowLabel = true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = activeIcon,
-                            selectedTextColor = activeIcon,
-                            unselectedIconColor = inactiveIcon,
-                            unselectedTextColor = inactiveIcon,
-                            indicatorColor = activeBg
-                        )
-                    )
-
-                    NavigationBarItem(
-                        selected = selectedTab == Tab.STATS,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(
-                                    page = Tab.entries.indexOf(Tab.STATS),
-                                    animationSpec = tween(durationMillis = 300)
-                                )
-                            }
-                        },
-                        icon = { Icon(Icons.Filled.BarChart, contentDescription = "Статистика") },
-                        label = { Text("Статистика") },
-                        alwaysShowLabel = true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = activeIcon,
-                            selectedTextColor = activeIcon,
-                            unselectedIconColor = inactiveIcon,
-                            unselectedTextColor = inactiveIcon,
-                            indicatorColor = activeBg
-                        )
-                    )
+                    }
                 }
-            }
+            )
         }
     ) { innerPadding ->
         HorizontalPager(
@@ -1531,7 +1678,7 @@ private fun StatsScreen(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Попередній період",
                     tint = ButtonCyan
                 )
@@ -1555,7 +1702,7 @@ private fun StatsScreen(
                 enabled = canNavigate
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Наступний період",
                     tint = if (canNavigate) ButtonCyan else Color.Gray.copy(alpha = 0.5f)
                 )
