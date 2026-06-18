@@ -99,6 +99,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -220,6 +221,34 @@ private enum class Tab {
 // Прямокутна форма для кнопок з помірними закругленими кутами
 private val ButtonShape = RoundedCornerShape(12.dp)
 private val CardShape = RoundedCornerShape(16.dp)
+
+@Composable
+private fun SportCardIcon(
+    sportId: String,
+    emoji: String,
+    tint: Color
+) {
+    val vector = sportCardIconVector(sportId)
+    val drawable = sportCardIconDrawable(sportId)
+    when {
+        vector != null -> Icon(
+            imageVector = vector,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(24.dp)
+        )
+        drawable != null -> Icon(
+            painter = painterResource(drawable),
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(24.dp)
+        )
+        else -> Text(
+            text = emoji,
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
 
 @Composable
 private fun AppRoot() {
@@ -785,9 +814,10 @@ private fun ListScreen(
                                 .background(iconBoxColor),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = emoji,
-                                style = MaterialTheme.typography.titleMedium
+                            SportCardIcon(
+                                sportId = item.sport,
+                                emoji = emoji,
+                                tint = cardStyle.accent
                             )
                         }
 
@@ -1540,44 +1570,76 @@ private fun StatsScreen(
         Text("Всього: $total", style = MaterialTheme.typography.titleMedium)
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             rows.forEach { row ->
                 val count = row.cnt
                 if (count <= 0) return@forEach
                 val def = sportsById[row.sport]
-                val badgeColor = sportColorForId(row.sport)
-                val bg = badgeColor.copy(alpha = 0.15f)
+                val sportUa = sportLabelFor(def, row.sport)
+                val cardStyle = sportCardStyleForId(row.sport)
+                val emoji = sportEmojiFor(def)
+                val fieldTextColor = if (isDark) Color.White else Color(0xFF212121)
+                val gradient = Brush.horizontalGradient(
+                    if (isDark) {
+                        listOf(cardStyle.darkGradientStart, cardStyle.darkGradientEnd)
+                    } else {
+                        listOf(cardStyle.lightGradientStart, cardStyle.lightGradientEnd)
+                    }
+                )
+                val iconBoxColor = if (isDark) cardStyle.iconBoxDark else cardStyle.iconBoxLight
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(containerColor = bg),
-                    border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.35f)),
-                    shape = MaterialTheme.shapes.medium
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CardShape)
+                        .background(gradient)
+                        .then(
+                            if (isDark) {
+                                Modifier.border(
+                                    width = 0.5.dp,
+                                    color = cardStyle.accent.copy(alpha = 0.25f),
+                                    shape = CardShape
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(all = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = sportEmojiFor(def),
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(iconBoxColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            SportCardIcon(
+                                sportId = row.sport,
+                                emoji = emoji,
+                                tint = cardStyle.accent
+                            )
+                        }
 
-                        Spacer(Modifier.width(10.dp))
-
                         Text(
-                            text = sportLabelFor(def, row.sport),
+                            text = sportUa,
                             modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = fieldTextColor
                         )
 
                         Text(
                             text = count.toString(),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = fieldTextColor
                         )
                     }
                 }

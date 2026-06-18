@@ -102,6 +102,30 @@ function isDarkThemePreferred() {
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
+const BUILTIN_SPORT_ICONS = {
+  GYM: 'fitness_center',
+  FOOTBALL: 'sports_soccer',
+  RUNNING: 'directions_run',
+  TENNIS: 'sports_tennis',
+  SWIMMING: 'pool',
+  CYCLING: 'directions_bike'
+};
+
+function sportTableTennisIconSvg(accentColor) {
+  return `<svg class="sport-card-icon-svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="${accentColor}" d="M18.5,14C19.9,14 21,15.1 21,16.5C21,17.9 19.9,19 18.5,19C17.1,19 16,17.9 16,16.5C16,15.1 17.1,14 18.5,14M7,15C7,15 8,16 8,17V20.5C8,21.3 8.7,22 9.5,22C10.3,22 11,21.3 11,20.5V17C11,16 12,15 12,15H7M8,14H11C11,14 16,14 16,9C16,4 12,2 9.5,2C7,2 3,4 3,9C3,14 8,14 8,14Z"/></svg>`;
+}
+
+function sportCardIconHtml(sportId, accentColor, emojiFallback) {
+  if (sportId === 'TABLE_TENNIS') {
+    return sportTableTennisIconSvg(accentColor);
+  }
+  const iconName = BUILTIN_SPORT_ICONS[sportId];
+  if (iconName) {
+    return `<span class="material-icons sport-card-icon" style="color: ${accentColor};">${iconName}</span>`;
+  }
+  return emojiFallback || '🏅';
+}
+
 function sortSportDefinitions(list) {
   return [...list].sort((a, b) => {
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
@@ -1535,9 +1559,11 @@ function renderTrainings() {
     const iconBg = dark ? cardStyle.iconDark : cardStyle.iconLight;
     const borderStyle = dark ? `0.5px solid ${hexToRgba(cardStyle.accent, 0.25)}` : 'none';
 
+    const iconHtml = sportCardIconHtml(training.sport, cardStyle.accent, sport.emoji);
+
     return `
       <div class="training-card" data-id="${training.id}" style="background: ${gradient}; border: ${borderStyle};">
-        <div class="training-emoji" style="background-color: ${iconBg};">${sport.emoji}</div>
+        <div class="training-emoji" style="background-color: ${iconBg};">${iconHtml}</div>
         <div class="training-info">
           <div class="training-name">${sport.name}</div>
           <div class="training-date">${training.dateText || date}</div>
@@ -1765,18 +1791,23 @@ function updateStats() {
   }
 
   // Створюємо картки для кожного виду спорту (сортуємо за кількістю)
+  const dark = isDarkThemePreferred();
   const cardsHtml = Object.entries(bySport)
     .sort((a, b) => b[1] - a[1])
     .map(([sport, count]) => {
       const sportInfo = sportDisplayInfo(sport);
-      const badgeColor = sportInfo.color;
-      const bgColor = hexToRgba(badgeColor, 0.15);
-      const borderColor = hexToRgba(badgeColor, 0.35);
-      const emojiBg = hexToRgba(badgeColor, 0.25);
-      
+      const cardStyle = sportCardStyleForId(sport);
+      const gradient = dark
+        ? `linear-gradient(to right, ${cardStyle.dark[0]}, ${cardStyle.dark[1]})`
+        : `linear-gradient(to right, ${cardStyle.light[0]}, ${cardStyle.light[1]})`;
+      const iconBg = dark ? cardStyle.iconDark : cardStyle.iconLight;
+      const borderStyle = dark ? `0.5px solid ${hexToRgba(cardStyle.accent, 0.25)}` : 'none';
+
+      const iconHtml = sportCardIconHtml(sport, cardStyle.accent, sportInfo.emoji);
+
       return `
-        <div class="stat-card" style="border: 1px solid ${borderColor}; background: ${bgColor};">
-          <div class="stat-emoji" style="background: ${emojiBg};">${sportInfo.emoji}</div>
+        <div class="stat-card" style="background: ${gradient}; border: ${borderStyle};">
+          <div class="stat-emoji" style="background-color: ${iconBg};">${iconHtml}</div>
           <div class="stat-info">
             <div class="stat-name">${sportInfo.name}</div>
           </div>

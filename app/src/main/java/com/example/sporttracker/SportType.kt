@@ -1,6 +1,15 @@
 package com.example.sporttracker
 
+import androidx.annotation.DrawableRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Pool
+import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.sporttracker.db.SportDefinitionEntity
 import kotlin.math.abs
 
@@ -116,3 +125,19 @@ fun sportEmojiFor(definition: SportDefinitionEntity?): String =
 
 fun sportLabelFor(definition: SportDefinitionEntity?, sportId: String): String =
     definition?.nameUa?.ifBlank { sportId } ?: sportId
+
+fun sportCardIconVector(sportId: String): ImageVector? = when (sportId) {
+    "GYM" -> Icons.Filled.FitnessCenter
+    "FOOTBALL" -> Icons.Filled.SportsSoccer
+    "RUNNING" -> Icons.Filled.DirectionsRun
+    "TENNIS" -> Icons.Filled.SportsTennis
+    "SWIMMING" -> Icons.Filled.Pool
+    "CYCLING" -> Icons.Filled.DirectionsBike
+    else -> null
+}
+
+@DrawableRes
+fun sportCardIconDrawable(sportId: String): Int? = when (sportId) {
+    "TABLE_TENNIS" -> R.drawable.ic_sport_table_tennis
+    else -> null
+}
