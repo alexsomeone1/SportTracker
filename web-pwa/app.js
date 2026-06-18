@@ -11,13 +11,65 @@ const BUILTIN_SPORT_DEFINITIONS = [
 
 // Кольори бейджів для вбудованих id (як у Android: SportType.kt)
 const BUILTIN_SPORT_COLORS = {
-  GYM: '#7C4DFF',
-  FOOTBALL: '#2E7D32',
+  GYM: '#9B59B6',
+  FOOTBALL: '#43A047',
   RUNNING: '#FF6D00',
   TABLE_TENNIS: '#00838F',
-  TENNIS: '#43A047',
+  TENNIS: '#7CB342',
   SWIMMING: '#1565C0',
-  CYCLING: '#6D4C41'
+  CYCLING: '#FF8A50'
+};
+
+const BUILTIN_SPORT_CARD_STYLES = {
+  GYM: {
+    light: ['#E8D5FF', '#F8F2FF'],
+    dark: ['#3D2858', '#14101C'],
+    iconLight: '#D4BBFF',
+    iconDark: '#2A1D3D',
+    accent: '#9B59B6'
+  },
+  FOOTBALL: {
+    light: ['#D5FFD9', '#F0FFF2'],
+    dark: ['#1E3D22', '#0E140F'],
+    iconLight: '#B8E6BC',
+    iconDark: '#1A2E1C',
+    accent: '#43A047'
+  },
+  RUNNING: {
+    light: ['#FFE0CC', '#FFF5EE'],
+    dark: ['#4A2800', '#1A1008'],
+    iconLight: '#FFCC99',
+    iconDark: '#3D2200',
+    accent: '#FF6D00'
+  },
+  TABLE_TENNIS: {
+    light: ['#B2EBF2', '#E8FAFC'],
+    dark: ['#003D44', '#0A1214'],
+    iconLight: '#80DEEA',
+    iconDark: '#002A30',
+    accent: '#00838F'
+  },
+  TENNIS: {
+    light: ['#DCEDC8', '#F5FAEF'],
+    dark: ['#2E4018', '#101408'],
+    iconLight: '#C5E1A5',
+    iconDark: '#243012',
+    accent: '#7CB342'
+  },
+  SWIMMING: {
+    light: ['#BBDEFB', '#EEF6FF'],
+    dark: ['#0D2744', '#0A1018'],
+    iconLight: '#90CAF9',
+    iconDark: '#0A1E36',
+    accent: '#1565C0'
+  },
+  CYCLING: {
+    light: ['#FFE5D5', '#FFF8F4'],
+    dark: ['#4A2E18', '#181008'],
+    iconLight: '#FFCCAA',
+    iconDark: '#3D2510',
+    accent: '#FF8A50'
+  }
 };
 
 const FALLBACK_SPORT_COLORS = ['#5C6BC0', '#00897B', '#E65100', '#6A1B9A', '#00695C', '#C62828'];
@@ -31,6 +83,23 @@ function sportColorForId(sportId) {
     h = (h * 31 + sportId.charCodeAt(i)) | 0;
   }
   return FALLBACK_SPORT_COLORS[Math.abs(h) % FALLBACK_SPORT_COLORS.length];
+}
+
+function sportCardStyleForId(sportId) {
+  const builtIn = BUILTIN_SPORT_CARD_STYLES[sportId];
+  if (builtIn) return builtIn;
+  const accent = sportColorForId(sportId);
+  return {
+    light: [hexToRgba(accent, 0.35), hexToRgba(accent, 0.08)],
+    dark: [hexToRgba(accent, 0.45), '#121212'],
+    iconLight: hexToRgba(accent, 0.35),
+    iconDark: hexToRgba(accent, 0.25),
+    accent
+  };
+}
+
+function isDarkThemePreferred() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
 function sortSportDefinitions(list) {
@@ -104,12 +173,12 @@ function rebuildSportDropdowns() {
   const sportFilterText = document.getElementById('sport-filter-text');
   if (listSportFilter) {
     const info = sportDisplayInfo(listSportFilter);
-    if (sportFilterText) sportFilterText.textContent = `Вид спорту: ${info.name}`;
+    if (sportFilterText) sportFilterText.textContent = info.name;
     filterDropdown.querySelectorAll('.sport-filter-item').forEach((el) => {
       el.classList.toggle('active', (el.dataset.sport || '') === listSportFilter);
     });
   } else {
-    if (sportFilterText) sportFilterText.textContent = 'Вид спорту: Усі';
+    if (sportFilterText) sportFilterText.textContent = 'Усі';
     filterDropdown.querySelectorAll('.sport-filter-item').forEach((el) => {
       el.classList.toggle('active', (el.dataset.sport || '') === '');
     });
@@ -603,10 +672,10 @@ function initSportDropdownDelegation() {
       listSportFilter = sport || null;
       const sportFilterText = document.getElementById('sport-filter-text');
       if (!sport) {
-        if (sportFilterText) sportFilterText.textContent = 'Вид спорту: Усі';
+        if (sportFilterText) sportFilterText.textContent = 'Усі';
       } else {
         const info = sportDisplayInfo(sport);
-        if (sportFilterText) sportFilterText.textContent = `Вид спорту: ${info.name}`;
+        if (sportFilterText) sportFilterText.textContent = info.name;
       }
       fd.querySelectorAll('.sport-filter-item').forEach((i) => i.classList.remove('active'));
       filterItem.classList.add('active');
@@ -1283,173 +1352,134 @@ function loadTrainings() {
   initTrainingsListener();
 }
 
-  // Функція для оновлення тексту періоду (видалено, бо період не відображається на вкладці "Список")
-function updatePeriodText() {
-  // Період більше не відображається на вкладці "Список"
-}
+  // Функція для оновлення тексту періоду (не використовується на вкладці «Список»)
+function updatePeriodText() {}
 
   // Ініціалізація фільтрів списку
 function initListFilters() {
-  // Встановлюємо початкові дати (поточний місяць)
   const today = new Date();
   const firstDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
   const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  
+
   listFromDate = firstDay;
   listToDate = lastDay;
-  
-  // Встановлюємо значення в input
+
   const fromInput = document.getElementById('from-date-input');
   const toInput = document.getElementById('to-date-input');
   const fromDisplay = document.getElementById('from-date-display');
   const toDisplay = document.getElementById('to-date-display');
-  
-  if (fromInput && toInput && fromDisplay && toDisplay) {
-    fromInput.value = formatDateForInput(firstDay);
-    toInput.value = formatDateForInput(lastDay);
-    fromDisplay.textContent = `Від: ${formatDateUTC(firstDay)}`;
-    toDisplay.textContent = `До: ${formatDateUTC(lastDay)}`;
-    
-    // Оновлюємо текст періоду при ініціалізації
-    updatePeriodText();
-    
-    // Перевіряємо, чи завантажився Flatpickr
-    if (typeof flatpickr === 'undefined') {
-      console.error('Flatpickr не завантажено!');
-      return;
-    }
-    
-    // Ініціалізація Flatpickr для "Від"
-    let fromPicker;
-    try {
-      fromPicker = flatpickr(fromInput, {
-        dateFormat: 'Y-m-d',
-        locale: 'uk',
-        maxDate: new Date(),
-        defaultDate: formatDateForInput(firstDay),
-        allowInput: false,
-        clickOpens: false, // Не відкривається при кліку на input
-        appendTo: document.body, // Додаємо до body для коректного відображення
-        onChange: function(selectedDates, dateStr) {
-          if (selectedDates.length > 0) {
-            // Використовуємо UTC компоненти для правильної обробки дати
-            const selectedDate = selectedDates[0];
-            const newDate = new Date(Date.UTC(
-              selectedDate.getFullYear(),
-              selectedDate.getMonth(),
-              selectedDate.getDate()
-            ));
-            listFromDate = newDate;
-            // Оновлюємо відображення дати (отримуємо актуальний елемент)
-            const fromDisplayEl = document.getElementById('from-date-display');
-            if (fromDisplayEl) {
-              fromDisplayEl.textContent = `Від: ${formatDateUTC(newDate)}`;
-            }
-            if (listFromDate > listToDate) {
-              listToDate = newDate;
-              if (toPicker) {
-                toPicker.setDate(newDate, false);
-              }
-              const toDisplayEl = document.getElementById('to-date-display');
-              if (toDisplayEl) {
-                toDisplayEl.textContent = `До: ${formatDateUTC(newDate)}`;
-              }
-            }
-            updatePeriodText();
-            renderTrainings();
+
+  if (!fromInput || !toInput || !fromDisplay || !toDisplay) return;
+
+  fromInput.value = formatDateForInput(firstDay);
+  toInput.value = formatDateForInput(lastDay);
+  fromDisplay.textContent = `Від: ${formatDateUTC(firstDay)}`;
+  toDisplay.textContent = `До: ${formatDateUTC(lastDay)}`;
+
+  if (typeof flatpickr === 'undefined') {
+    console.error('Flatpickr не завантажено!');
+    return;
+  }
+
+  let fromPicker;
+  try {
+    fromPicker = flatpickr(fromInput, {
+      dateFormat: 'Y-m-d',
+      locale: 'uk',
+      maxDate: new Date(),
+      defaultDate: formatDateForInput(firstDay),
+      allowInput: false,
+      clickOpens: false,
+      appendTo: document.body,
+      onChange: function (selectedDates) {
+        if (selectedDates.length > 0) {
+          const selectedDate = selectedDates[0];
+          const newDate = new Date(Date.UTC(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate()
+          ));
+          listFromDate = newDate;
+          const fromDisplayEl = document.getElementById('from-date-display');
+          if (fromDisplayEl) {
+            fromDisplayEl.textContent = `Від: ${formatDateUTC(newDate)}`;
           }
-        }
-      });
-    } catch (e) {
-      console.error('Помилка ініціалізації Flatpickr для "Від":', e);
-    }
-    
-    // Ініціалізація Flatpickr для "До"
-    let toPicker;
-    try {
-      toPicker = flatpickr(toInput, {
-        dateFormat: 'Y-m-d',
-        locale: 'uk',
-        maxDate: new Date(),
-        defaultDate: formatDateForInput(lastDay),
-        allowInput: false,
-        clickOpens: false, // Не відкривається при кліку на input
-        appendTo: document.body, // Додаємо до body для коректного відображення
-        onChange: function(selectedDates, dateStr) {
-          if (selectedDates.length > 0) {
-            // Використовуємо UTC компоненти для правильної обробки дати
-            const selectedDate = selectedDates[0];
-            const newDate = new Date(Date.UTC(
-              selectedDate.getFullYear(),
-              selectedDate.getMonth(),
-              selectedDate.getDate()
-            ));
+          if (listFromDate > listToDate) {
             listToDate = newDate;
-            // Оновлюємо відображення дати (отримуємо актуальний елемент)
+            if (toPicker) toPicker.setDate(newDate, false);
             const toDisplayEl = document.getElementById('to-date-display');
             if (toDisplayEl) {
               toDisplayEl.textContent = `До: ${formatDateUTC(newDate)}`;
             }
-            if (listFromDate > listToDate) {
-              listFromDate = newDate;
-              if (fromPicker) {
-                fromPicker.setDate(newDate, false);
-              }
-              const fromDisplayEl = document.getElementById('from-date-display');
-              if (fromDisplayEl) {
-                fromDisplayEl.textContent = `Від: ${formatDateUTC(newDate)}`;
-              }
-            }
-            updatePeriodText();
-            renderTrainings();
           }
+          renderTrainings();
         }
-      });
-    } catch (e) {
-      console.error('Помилка ініціалізації Flatpickr для "До":', e);
-    }
-    
-    // Обробники кліків на кнопки
-    const fromDateBtn = document.getElementById('from-date-btn');
-    const toDateBtn = document.getElementById('to-date-btn');
-    
-    if (fromDateBtn && fromPicker) {
-      // Видаляємо всі існуючі обробники через заміну
-      fromDateBtn.onclick = null;
-      fromDateBtn.replaceWith(fromDateBtn.cloneNode(true));
-      const newFromBtn = document.getElementById('from-date-btn');
-      
-      newFromBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Відкриваємо календар для "Від"', fromPicker);
-        if (fromPicker) {
-          fromPicker.open();
-        } else {
-          console.error('fromPicker не ініціалізований');
+      }
+    });
+  } catch (e) {
+    console.error('Помилка ініціалізації Flatpickr для "Від":', e);
+  }
+
+  let toPicker;
+  try {
+    toPicker = flatpickr(toInput, {
+      dateFormat: 'Y-m-d',
+      locale: 'uk',
+      maxDate: new Date(),
+      defaultDate: formatDateForInput(lastDay),
+      allowInput: false,
+      clickOpens: false,
+      appendTo: document.body,
+      onChange: function (selectedDates) {
+        if (selectedDates.length > 0) {
+          const selectedDate = selectedDates[0];
+          const newDate = new Date(Date.UTC(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate()
+          ));
+          listToDate = newDate;
+          const toDisplayEl = document.getElementById('to-date-display');
+          if (toDisplayEl) {
+            toDisplayEl.textContent = `До: ${formatDateUTC(newDate)}`;
+          }
+          if (listFromDate > listToDate) {
+            listFromDate = newDate;
+            if (fromPicker) fromPicker.setDate(newDate, false);
+            const fromDisplayEl = document.getElementById('from-date-display');
+            if (fromDisplayEl) {
+              fromDisplayEl.textContent = `Від: ${formatDateUTC(newDate)}`;
+            }
+          }
+          renderTrainings();
         }
-        return false;
-      }, true);
-    }
-    
-    if (toDateBtn && toPicker) {
-      // Видаляємо всі існуючі обробники через заміну
-      toDateBtn.onclick = null;
-      toDateBtn.replaceWith(toDateBtn.cloneNode(true));
-      const newToBtn = document.getElementById('to-date-btn');
-      
-      newToBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Відкриваємо календар для "До"', toPicker);
-        if (toPicker) {
-          toPicker.open();
-        } else {
-          console.error('toPicker не ініціалізований');
-        }
-        return false;
-      }, true);
-    }
+      }
+    });
+  } catch (e) {
+    console.error('Помилка ініціалізації Flatpickr для "До":', e);
+  }
+
+  const fromDateBtn = document.getElementById('from-date-btn');
+  const toDateBtn = document.getElementById('to-date-btn');
+
+  if (fromDateBtn && fromPicker) {
+    fromDateBtn.onclick = null;
+    fromDateBtn.replaceWith(fromDateBtn.cloneNode(true));
+    document.getElementById('from-date-btn').addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fromPicker.open();
+    }, true);
+  }
+
+  if (toDateBtn && toPicker) {
+    toDateBtn.onclick = null;
+    toDateBtn.replaceWith(toDateBtn.cloneNode(true));
+    document.getElementById('to-date-btn').addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toPicker.open();
+    }, true);
   }
 }
 
@@ -1464,61 +1494,55 @@ function formatDateForInput(date) {
 function renderTrainings() {
   const list = document.getElementById('trainings-list');
   const countElement = document.getElementById('list-count');
-  
-  // Оновлюємо текст періоду
+
   updatePeriodText();
-  
-  if (trainings.length === 0) {
-    list.innerHTML = '<p class="empty-state">Немає тренувань</p>';
-    if (countElement) countElement.textContent = '';
-    return;
-  }
 
   // Фільтруємо тренування
   let filtered = trainings;
-  
-  // Фільтр по періоду
+
   if (listFromDate && listToDate) {
     const fromEpochDay = Math.floor(listFromDate.getTime() / 86400000);
     const toEpochDay = Math.floor(listToDate.getTime() / 86400000);
-    
+
     filtered = filtered.filter(t => {
       const epochDay = typeof t.dateEpochDay === 'number' ? t.dateEpochDay : parseInt(t.dateEpochDay);
       return !isNaN(epochDay) && epochDay >= fromEpochDay && epochDay <= toEpochDay;
     });
   }
-  
-  // Фільтр по виду спорту
+
   if (listSportFilter) {
     filtered = filtered.filter(t => t.sport === listSportFilter);
   }
-  
-  // Оновлюємо кількість
+
   if (countElement) {
-    if (filtered.length === 0) {
-      countElement.innerHTML = '<p class="empty-state">Немає тренувань у вибраному фільтрі.</p>';
-      list.innerHTML = '';
-      return;
-    } else {
-      countElement.textContent = `Кількість: ${filtered.length}`;
-    }
+    countElement.textContent = `Кількість: ${filtered.length}`;
   }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<p class="empty-state">Немає тренувань</p>';
+    return;
+  }
+
+  const dark = isDarkThemePreferred();
 
   list.innerHTML = filtered.map(training => {
     const sport = sportDisplayInfo(training.sport);
     const date = new Date(training.dateEpochDay * 86400000).toLocaleDateString('uk-UA');
-    const borderColor = sport.color;
-    const bgColor = hexToRgba(sport.color, 0.12);
-    const badgeBgColor = hexToRgba(sport.color, 0.25);
-    
+    const cardStyle = sportCardStyleForId(training.sport);
+    const gradient = dark
+      ? `linear-gradient(to right, ${cardStyle.dark[0]}, ${cardStyle.dark[1]})`
+      : `linear-gradient(to right, ${cardStyle.light[0]}, ${cardStyle.light[1]})`;
+    const iconBg = dark ? cardStyle.iconDark : cardStyle.iconLight;
+    const borderStyle = dark ? `0.5px solid ${hexToRgba(cardStyle.accent, 0.25)}` : 'none';
+
     return `
-      <div class="training-card" data-id="${training.id}" style="border: 0.5px solid ${borderColor}40; background-color: ${bgColor};">
-        <div class="training-emoji" style="background-color: ${badgeBgColor};">${sport.emoji}</div>
+      <div class="training-card" data-id="${training.id}" style="background: ${gradient}; border: ${borderStyle};">
+        <div class="training-emoji" style="background-color: ${iconBg};">${sport.emoji}</div>
         <div class="training-info">
           <div class="training-name">${sport.name}</div>
           <div class="training-date">${training.dateText || date}</div>
         </div>
-        <button class="btn-delete material-icons" onclick="deleteTraining('${training.id}')" style="color: ${borderColor};">delete_outline</button>
+        <button class="btn-delete material-icons" onclick="deleteTraining('${training.id}')">delete_outline</button>
       </div>
     `;
   }).join('') + '<div class="list-spacer"></div>';

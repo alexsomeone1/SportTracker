@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,6 +90,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -110,9 +112,12 @@ import com.example.sporttracker.db.SportDefinitionEntity
 import com.example.sporttracker.db.TrainingEntity
 import com.example.sporttracker.ui.auth.AuthScreen
 import com.example.sporttracker.ui.auth.AuthViewModel
+import com.example.sporttracker.ui.theme.AppBackgroundDark
+import com.example.sporttracker.ui.theme.AppBackgroundLight
 import com.example.sporttracker.ui.theme.ButtonCyan
 import com.example.sporttracker.ui.theme.ButtonCyanActive
 import com.example.sporttracker.ui.theme.ButtonCyanDark
+import com.example.sporttracker.ui.theme.FilterFieldDark
 import com.example.sporttracker.ui.theme.SportTrackerTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -214,6 +219,7 @@ private enum class Tab {
 
 // Прямокутна форма для кнопок з помірними закругленими кутами
 private val ButtonShape = RoundedCornerShape(12.dp)
+private val CardShape = RoundedCornerShape(16.dp)
 
 @Composable
 private fun AppRoot() {
@@ -258,14 +264,14 @@ private fun AppRoot() {
                 shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-            NavigationBar(
+                NavigationBar(
                     modifier = Modifier.fillMaxWidth(),
                     containerColor = Color.Transparent,
-                tonalElevation = 0.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedTab == Tab.LIST,
-                        onClick = { 
+                    tonalElevation = 0.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedTab == Tab.LIST,
+                        onClick = {
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(
                                     page = Tab.entries.indexOf(Tab.LIST),
@@ -273,21 +279,21 @@ private fun AppRoot() {
                                 )
                             }
                         },
-                    icon = { Icon(Icons.Filled.Menu, contentDescription = "Список") },
+                        icon = { Icon(Icons.Filled.Menu, contentDescription = "Список") },
                         label = { Text("Список") },
                         alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = activeIcon,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = activeIcon,
                             selectedTextColor = activeIcon,
-                        unselectedIconColor = inactiveIcon,
+                            unselectedIconColor = inactiveIcon,
                             unselectedTextColor = inactiveIcon,
-                        indicatorColor = activeBg
+                            indicatorColor = activeBg
+                        )
                     )
-                )
 
-                NavigationBarItem(
-                    selected = selectedTab == Tab.ADD,
-                        onClick = { 
+                    NavigationBarItem(
+                        selected = selectedTab == Tab.ADD,
+                        onClick = {
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(
                                     page = Tab.entries.indexOf(Tab.ADD),
@@ -295,21 +301,21 @@ private fun AppRoot() {
                                 )
                             }
                         },
-                    icon = { Icon(Icons.Filled.Add, contentDescription = "Додати") },
+                        icon = { Icon(Icons.Filled.Add, contentDescription = "Додати") },
                         label = { Text("Додати") },
                         alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = activeIcon,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = activeIcon,
                             selectedTextColor = activeIcon,
-                        unselectedIconColor = inactiveIcon,
+                            unselectedIconColor = inactiveIcon,
                             unselectedTextColor = inactiveIcon,
-                        indicatorColor = activeBg
+                            indicatorColor = activeBg
+                        )
                     )
-                )
 
-                NavigationBarItem(
-                    selected = selectedTab == Tab.STATS,
-                        onClick = { 
+                    NavigationBarItem(
+                        selected = selectedTab == Tab.STATS,
+                        onClick = {
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(
                                     page = Tab.entries.indexOf(Tab.STATS),
@@ -317,17 +323,17 @@ private fun AppRoot() {
                                 )
                             }
                         },
-                    icon = { Icon(Icons.Filled.BarChart, contentDescription = "Статистика") },
+                        icon = { Icon(Icons.Filled.BarChart, contentDescription = "Статистика") },
                         label = { Text("Статистика") },
                         alwaysShowLabel = true,
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = activeIcon,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = activeIcon,
                             selectedTextColor = activeIcon,
-                        unselectedIconColor = inactiveIcon,
+                            unselectedIconColor = inactiveIcon,
                             unselectedTextColor = inactiveIcon,
-                        indicatorColor = activeBg
+                            indicatorColor = activeBg
+                        )
                     )
-                )
                 }
             }
         }
@@ -448,23 +454,31 @@ private fun ListScreen(
     val sportsById = remember(sports) { sports.associateBy { it.id } }
 
     // --- ui
+    val isDark = isSystemInDarkTheme()
+    val fieldBg = if (isDark) FilterFieldDark else Color.White
+    val labelColor = if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF616161)
+    val fieldTextColor = if (isDark) Color.White else Color(0xFF212121)
+    val deleteTint = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF424242)
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(if (isDark) AppBackgroundDark else AppBackgroundLight)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = "Список тренувань",
             style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 44.dp),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = fieldTextColor
         )
 
-        // ---- Sport dropdown (self-contained)
+        // ---- Sport filter
         var expanded by remember { mutableStateOf(false) }
         val selectedSportLabel = sportFilter?.let { fid ->
             sportLabelFor(sportsById[fid], fid)
@@ -472,9 +486,13 @@ private fun ListScreen(
 
         var anchorWidthPx by remember { mutableIntStateOf(0) }
         val anchorWidthDp = with(LocalDensity.current) { anchorWidthPx.toDp() }
-        val menuBg = MaterialTheme.colorScheme.surface
-        val isDark = isSystemInDarkTheme()
-        val buttonTextColor = if (isDark) Color.White else Color.Black
+        val menuBg = if (isDark) FilterFieldDark else Color.White
+
+        Text(
+            text = "Вид спорту:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = labelColor
+        )
 
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(
@@ -485,16 +503,18 @@ private fun ListScreen(
                         anchorWidthPx = coords.size.width
                     },
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = ButtonCyan.copy(alpha = 0.1f),
-                    contentColor = buttonTextColor
+                    containerColor = fieldBg,
+                    contentColor = fieldTextColor
                 ),
                 border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape
+                shape = ButtonShape,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Text(
-                    text = "Вид спорту: $selectedSportLabel",
+                    text = selectedSportLabel,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
                 )
             }
 
@@ -511,11 +531,9 @@ private fun ListScreen(
                         .clip(RoundedCornerShape(12.dp))
                 ) {
                     Column(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-            ) {
-                        // Елемент "Усі" з галочкою
-                DropdownMenuItem(
+                        modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                    ) {
+                        DropdownMenuItem(
                             text = {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -533,16 +551,15 @@ private fun ListScreen(
                                     Text("Усі")
                                 }
                             },
-                    onClick = {
-                        sportFilter = null
-                        expanded = false
+                            onClick = {
+                                sportFilter = null
+                                expanded = false
                             },
                             modifier = Modifier.background(
                                 if (sportFilter == null) ButtonCyan.copy(alpha = 0.15f) else Color.Transparent
                             ),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                         )
-                        // Елементи з видами спорту з емодзі
                         sports.forEach { sport ->
                             val isSelected = sportFilter == sport.id
                             DropdownMenuItem(
@@ -576,58 +593,60 @@ private fun ListScreen(
             }
         }
 
+        // ---- Period filter (two separate date buttons)
         Text(
-            text = "Період",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
+            text = "Період:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = labelColor
         )
 
-        // Кнопки вибору періоду (Від/До) - OutlinedButton
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
                 modifier = Modifier.weight(1f),
-                onClick = {
-                    showFromDatePicker = true
-                },
+                onClick = { showFromDatePicker = true },
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = ButtonCyan.copy(alpha = 0.1f),
-                    contentColor = buttonTextColor
+                    containerColor = fieldBg,
+                    contentColor = fieldTextColor
                 ),
                 border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape
+                shape = ButtonShape,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)
             ) {
                 Text(
                     text = "Від: ${fromDate.format(fmt)}",
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
+                    textAlign = TextAlign.Center
                 )
             }
 
             OutlinedButton(
                 modifier = Modifier.weight(1f),
-                onClick = {
-                    showToDatePicker = true
-                },
+                onClick = { showToDatePicker = true },
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = ButtonCyan.copy(alpha = 0.1f),
-                    contentColor = buttonTextColor
+                    containerColor = fieldBg,
+                    contentColor = fieldTextColor
                 ),
                 border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape
+                shape = ButtonShape,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)
             ) {
                 Text(
                     text = "До: ${toDate.format(fmt)}",
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
+                    textAlign = TextAlign.Center
                 )
             }
         }
 
-        HorizontalDivider()
+        Text(
+            text = "Кількість: $count",
+            style = MaterialTheme.typography.titleMedium,
+            color = fieldTextColor,
+            fontWeight = FontWeight.Medium
+        )
 
         // Material Date Picker Dialog для "Від"
         if (showFromDatePicker) {
@@ -709,34 +728,48 @@ private fun ListScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
-                letterSpacing = 1.sp
+                color = labelColor
             )
-            return@Column
-        }
-
-        Text("Кількість: $count", style = MaterialTheme.typography.titleMedium)
-
+        } else {
         Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .navigationBarsPadding()
                     .pullRefresh(pullRefreshState),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(items) { item ->
                 val def = sportsById[item.sport]
                 val sportUa = sportLabelFor(def, item.sport)
-                val badgeColor = sportColorForId(item.sport)
+                val cardStyle = sportCardStyleForId(item.sport)
                 val emoji = sportEmojiFor(def)
+                val gradient = Brush.horizontalGradient(
+                    if (isDark) {
+                        listOf(cardStyle.darkGradientStart, cardStyle.darkGradientEnd)
+                    } else {
+                        listOf(cardStyle.lightGradientStart, cardStyle.lightGradientEnd)
+                    }
+                )
+                val iconBoxColor = if (isDark) cardStyle.iconBoxDark else cardStyle.iconBoxLight
+                val dateColor = if (isDark) Color.White.copy(alpha = 0.65f) else Color(0xFF616161)
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(0.5.dp, badgeColor.copy(alpha = 0.25f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = badgeColor.copy(alpha = 0.12f)
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CardShape)
+                        .background(gradient)
+                        .then(
+                            if (isDark) {
+                                Modifier.border(
+                                    width = 0.5.dp,
+                                    color = cardStyle.accent.copy(alpha = 0.25f),
+                                    shape = CardShape
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     Row(
                         modifier = Modifier
@@ -747,9 +780,9 @@ private fun ListScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .clip(MaterialTheme.shapes.small)
-                                .background(badgeColor.copy(alpha = 0.25f))
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(iconBoxColor),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -761,15 +794,17 @@ private fun ListScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = sportUa,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = fieldTextColor
                             )
                             Text(
                                 text = item.dateText,
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                color = dateColor
                             )
                         }
-                        
-                        // Кнопка видалення
+
                         IconButton(
                             onClick = {
                                 selectedTrainingForDeletion = item
@@ -779,7 +814,7 @@ private fun ListScreen(
                             Icon(
                                 imageVector = Icons.Outlined.DeleteOutline,
                                 contentDescription = "Видалити",
-                                tint = badgeColor,
+                                tint = deleteTint,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -799,6 +834,7 @@ private fun ListScreen(
             state = pullRefreshState,
             modifier = Modifier.align(Alignment.TopCenter)
         )
+        }
         }
 
         // Діалог підтвердження видалення

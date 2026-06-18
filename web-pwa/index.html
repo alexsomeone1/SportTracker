@@ -65,11 +65,13 @@
                 </div>
                 <div class="list-container">
                     <!-- Фільтр по виду спорту -->
-                    <div class="sport-filter-wrapper">
-                        <button id="sport-filter-btn" class="sport-filter">
-                            <span id="sport-filter-text">Вид спорту: Усі</span>
-                        </button>
-                        <div id="sport-filter-dropdown" class="sport-filter-dropdown">
+                    <div class="filter-group">
+                        <label class="filter-label" for="sport-filter-btn">Вид спорту:</label>
+                        <div class="sport-filter-wrapper">
+                            <button id="sport-filter-btn" class="filter-field" type="button">
+                                <span id="sport-filter-text">Усі</span>
+                            </button>
+                            <div id="sport-filter-dropdown" class="sport-filter-dropdown">
                             <div class="sport-filter-item active" data-sport="">
                                 <span class="sport-filter-check">✓</span>
                                 <span>Усі</span>
@@ -106,18 +108,18 @@
                     </div>
                     
                     <!-- Період -->
-                    <div class="period-label">Період</div>
-                    
-                    <!-- Кнопки вибору періоду -->
-                    <div class="period-buttons">
-                        <button id="from-date-btn" class="btn-outlined period-btn">
-                            <span id="from-date-display">Від: 01.01.2024</span>
-                        </button>
-                        <input type="text" id="from-date-input" class="date-input-hidden" readonly>
-                        <button id="to-date-btn" class="btn-outlined period-btn">
-                            <span id="to-date-display">До: 31.12.2024</span>
-                        </button>
-                        <input type="text" id="to-date-input" class="date-input-hidden" readonly>
+                    <div class="filter-group">
+                        <label class="filter-label">Період:</label>
+                        <div class="period-buttons">
+                            <button id="from-date-btn" class="filter-field period-btn" type="button">
+                                <span id="from-date-display">Від: 01.01.2024</span>
+                            </button>
+                            <input type="text" id="from-date-input" class="date-input-hidden" readonly>
+                            <button id="to-date-btn" class="filter-field period-btn" type="button">
+                                <span id="to-date-display">До: 31.12.2024</span>
+                            </button>
+                            <input type="text" id="to-date-input" class="date-input-hidden" readonly>
+                        </div>
                     </div>
                     
                     <!-- Кількість та список -->

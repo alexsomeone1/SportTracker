@@ -12,7 +12,11 @@ val Pink40 = Color(0xFF7D5260)
 
 val MainBlue = Color(0xFF1E88E5)
 
-// Cyan колір для кнопок
-val ButtonCyan = Color(0xFF5AB8B8) // Темніший cyan для кращої читабельності білого тексту
-val ButtonCyanDark = Color(0xFF4A9A9A) // Темніший cyan для темної теми
-val ButtonCyanActive = Color(0xFF3A7A7A) // Темніший cyan для активної вкладки
+// Акцентний teal з макету Stitch
+val ButtonCyan = Color(0xFF40E0D0)
+val ButtonCyanDark = Color(0xFF35C4B8)
+val ButtonCyanActive = Color(0xFF40E0D0)
+
+val AppBackgroundLight = Color(0xFFFFFFFF)
+val AppBackgroundDark = Color(0xFF121212)
+val FilterFieldDark = Color(0xFF1E1E1E)
