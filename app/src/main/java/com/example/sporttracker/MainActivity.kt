@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -96,6 +97,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -233,6 +236,70 @@ private enum class Tab {
 // Прямокутна форма для кнопок з помірними закругленими кутами
 private val ButtonShape = RoundedCornerShape(12.dp)
 private val CardShape = RoundedCornerShape(16.dp)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ListFilterField(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isHighlighted: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val baseGradient = if (isDark) {
+        Brush.verticalGradient(listOf(Color(0xFF252525), Color(0xFF1A1A1A)))
+    } else {
+        Brush.verticalGradient(listOf(Color.White, Color(0xFFF5F5F5)))
+    }
+    val tealStartAlpha = if (isHighlighted) 0.18f else 0.12f
+    val tealMidAlpha = if (isHighlighted) 0.08f else 0.04f
+    val shadowAlpha = if (isDark) 0.28f else 0.10f
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier.shadow(
+            elevation = 4.dp,
+            shape = ButtonShape,
+            ambientColor = Color.Black.copy(alpha = shadowAlpha),
+            spotColor = Color.Black.copy(alpha = shadowAlpha)
+        ),
+        shape = ButtonShape,
+        color = Color.Transparent
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(baseGradient)
+        ) {
+            val gradientEnd = with(LocalDensity.current) {
+                Offset(maxWidth.toPx(), maxHeight.toPx())
+            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                ButtonCyan.copy(alpha = tealStartAlpha),
+                                ButtonCyan.copy(alpha = tealMidAlpha),
+                                Color.Transparent
+                            ),
+                            start = Offset.Zero,
+                            end = gradientEnd
+                        )
+                    )
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(contentPadding),
+                verticalAlignment = Alignment.CenterVertically,
+                content = content
+            )
+        }
+    }
+}
 
 @Composable
 private fun SportCardIcon(
@@ -653,7 +720,6 @@ private fun ListScreen(
 
     // --- ui
     val isDark = isSystemInDarkTheme()
-    val fieldBg = if (isDark) FilterFieldDark else Color.White
     val labelColor = if (isDark) Color.White.copy(alpha = 0.7f) else Color(0xFF616161)
     val fieldTextColor = if (isDark) Color.White else Color(0xFF212121)
     val deleteTint = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF424242)
@@ -693,26 +759,21 @@ private fun ListScreen(
         )
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(
+            ListFilterField(
                 onClick = { expanded = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .onGloballyPositioned { coords ->
                         anchorWidthPx = coords.size.width
                     },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = fieldBg,
-                    contentColor = fieldTextColor
-                ),
-                border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                isHighlighted = sportFilter != null
             ) {
                 Text(
                     text = selectedSportLabel,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Start
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Start,
+                    color = fieldTextColor
                 )
             }
 
@@ -802,39 +863,31 @@ private fun ListScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            ListFilterField(
                 modifier = Modifier.weight(1f),
                 onClick = { showFromDatePicker = true },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = fieldBg,
-                    contentColor = fieldTextColor
-                ),
-                border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)
             ) {
                 Text(
                     text = "Від: ${fromDate.format(fmt)}",
                     fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = fieldTextColor
                 )
             }
 
-            OutlinedButton(
+            ListFilterField(
                 modifier = Modifier.weight(1f),
                 onClick = { showToDatePicker = true },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = fieldBg,
-                    contentColor = fieldTextColor
-                ),
-                border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape,
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)
             ) {
                 Text(
                     text = "До: ${toDate.format(fmt)}",
                     fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = fieldTextColor
                 )
             }
         }
