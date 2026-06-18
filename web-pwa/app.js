@@ -11,10 +11,10 @@ const BUILTIN_SPORT_DEFINITIONS = [
 
 // Кольори бейджів для вбудованих id (як у Android: SportType.kt)
 const BUILTIN_SPORT_COLORS = {
-  GYM: '#9B59B6',
+  GYM: '#00838F',
   FOOTBALL: '#43A047',
   RUNNING: '#FF6D00',
-  TABLE_TENNIS: '#00838F',
+  TABLE_TENNIS: '#1A56A8',
   TENNIS: '#7CB342',
   SWIMMING: '#1565C0',
   CYCLING: '#FF8A50'
@@ -22,11 +22,11 @@ const BUILTIN_SPORT_COLORS = {
 
 const BUILTIN_SPORT_CARD_STYLES = {
   GYM: {
-    light: ['#E8D5FF', '#F8F2FF'],
-    dark: ['#3D2858', '#14101C'],
-    iconLight: '#D4BBFF',
-    iconDark: '#2A1D3D',
-    accent: '#9B59B6'
+    light: ['#B2EBF2', '#E8FAFC'],
+    dark: ['#003D44', '#0A1214'],
+    iconLight: '#80DEEA',
+    iconDark: '#002A30',
+    accent: '#00838F'
   },
   FOOTBALL: {
     light: ['#D5FFD9', '#F0FFF2'],
@@ -43,11 +43,11 @@ const BUILTIN_SPORT_CARD_STYLES = {
     accent: '#FF6D00'
   },
   TABLE_TENNIS: {
-    light: ['#B2EBF2', '#E8FAFC'],
-    dark: ['#003D44', '#0A1214'],
-    iconLight: '#80DEEA',
-    iconDark: '#002A30',
-    accent: '#00838F'
+    light: ['#B8D4F0', '#EEF4FC'],
+    dark: ['#122654', '#0A1018'],
+    iconLight: '#8FB8E6',
+    iconDark: '#0C1E3A',
+    accent: '#1A56A8'
   },
   TENNIS: {
     light: ['#DCEDC8', '#F5FAEF'],

@@ -25,13 +25,13 @@ data class SportCardStyle(
 
 private val builtinSportCardStyles: Map<String, SportCardStyle> = mapOf(
     "GYM" to SportCardStyle(
-        accent = Color(0xFF9B59B6),
-        lightGradientStart = Color(0xFFE8D5FF),
-        lightGradientEnd = Color(0xFFF8F2FF),
-        darkGradientStart = Color(0xFF3D2858),
-        darkGradientEnd = Color(0xFF14101C),
-        iconBoxLight = Color(0xFFD4BBFF),
-        iconBoxDark = Color(0xFF2A1D3D)
+        accent = Color(0xFF00838F),
+        lightGradientStart = Color(0xFFB2EBF2),
+        lightGradientEnd = Color(0xFFE8FAFC),
+        darkGradientStart = Color(0xFF003D44),
+        darkGradientEnd = Color(0xFF0A1214),
+        iconBoxLight = Color(0xFF80DEEA),
+        iconBoxDark = Color(0xFF002A30)
     ),
     "FOOTBALL" to SportCardStyle(
         accent = Color(0xFF43A047),
@@ -52,13 +52,13 @@ private val builtinSportCardStyles: Map<String, SportCardStyle> = mapOf(
         iconBoxDark = Color(0xFF3D2200)
     ),
     "TABLE_TENNIS" to SportCardStyle(
-        accent = Color(0xFF00838F),
-        lightGradientStart = Color(0xFFB2EBF2),
-        lightGradientEnd = Color(0xFFE8FAFC),
-        darkGradientStart = Color(0xFF003D44),
-        darkGradientEnd = Color(0xFF0A1214),
-        iconBoxLight = Color(0xFF80DEEA),
-        iconBoxDark = Color(0xFF002A30)
+        accent = Color(0xFF1A56A8),
+        lightGradientStart = Color(0xFFB8D4F0),
+        lightGradientEnd = Color(0xFFEEF4FC),
+        darkGradientStart = Color(0xFF122654),
+        darkGradientEnd = Color(0xFF0A1018),
+        iconBoxLight = Color(0xFF8FB8E6),
+        iconBoxDark = Color(0xFF0C1E3A)
     ),
     "TENNIS" to SportCardStyle(
         accent = Color(0xFF7CB342),
