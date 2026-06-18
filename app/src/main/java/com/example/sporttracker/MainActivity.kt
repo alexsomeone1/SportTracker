@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -237,23 +238,34 @@ private enum class Tab {
 private val ButtonShape = RoundedCornerShape(12.dp)
 private val CardShape = RoundedCornerShape(16.dp)
 
+private enum class FilterFieldStyle {
+    Default,
+    Highlighted,
+    Subtle
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ListFilterField(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isHighlighted: Boolean = false,
+    style: FilterFieldStyle? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     content: @Composable RowScope.() -> Unit
 ) {
+    val resolvedStyle = style ?: if (isHighlighted) FilterFieldStyle.Highlighted else FilterFieldStyle.Default
+    val (tealStartAlpha, tealMidAlpha) = when (resolvedStyle) {
+        FilterFieldStyle.Default -> 0.12f to 0.04f
+        FilterFieldStyle.Highlighted -> 0.18f to 0.08f
+        FilterFieldStyle.Subtle -> 0.06f to 0.03f
+    }
     val isDark = isSystemInDarkTheme()
     val baseGradient = if (isDark) {
         Brush.verticalGradient(listOf(Color(0xFF252525), Color(0xFF1A1A1A)))
     } else {
         Brush.verticalGradient(listOf(Color.White, Color(0xFFF5F5F5)))
     }
-    val tealStartAlpha = if (isHighlighted) 0.18f else 0.12f
-    val tealMidAlpha = if (isHighlighted) 0.08f else 0.04f
     val shadowAlpha = if (isDark) 0.28f else 0.10f
 
     Surface(
@@ -299,6 +311,69 @@ private fun ListFilterField(
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PrimaryActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.shadow(
+            elevation = 6.dp,
+            shape = ButtonShape,
+            ambientColor = ButtonCyan.copy(alpha = 0.25f),
+            spotColor = ButtonCyan.copy(alpha = 0.35f)
+        ),
+        shape = ButtonShape,
+        color = Color.Transparent
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val gradientEnd = with(LocalDensity.current) {
+                Offset(maxWidth.toPx(), maxHeight.toPx())
+            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(ButtonCyan, ButtonCyanDark),
+                            start = Offset.Zero,
+                            end = gradientEnd
+                        )
+                    )
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(contentPadding),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                content = content
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SecondaryActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    ListFilterField(
+        onClick = onClick,
+        modifier = modifier,
+        style = FilterFieldStyle.Subtle,
+        contentPadding = contentPadding,
+        content = content
+    )
 }
 
 @Composable
@@ -1149,6 +1224,7 @@ private fun AddScreen(
         .collectAsState(initial = emptyList())
 
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    val today = remember { LocalDate.now() }
 
     val fmt = remember { DateTimeFormatter.ofPattern("dd.MM.yyyy") }
 
@@ -1197,8 +1273,7 @@ private fun AddScreen(
         }
     }
 
-    val isDark = isSystemInDarkTheme()
-    val buttonTextColor = if (isDark) Color.White else Color.Black
+    val buttonTextColor = if (isSystemInDarkTheme()) Color.White else Color.Black
 
     Column(
         modifier = modifier
@@ -1228,16 +1303,11 @@ private fun AddScreen(
                 buttonTextColor = buttonTextColor
             )
 
-            OutlinedButton(
+            ListFilterField(
                 onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = ButtonCyan.copy(alpha = 0.1f),
-                    contentColor = buttonTextColor
-                ),
-                border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape,
-                contentPadding = PaddingValues(vertical = 14.dp)
+                isHighlighted = selectedDate != today,
+                contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1247,36 +1317,34 @@ private fun AddScreen(
                     Icon(
                         imageVector = Icons.Filled.DateRange,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
+                        tint = buttonTextColor
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "Дата: ${selectedDate.format(fmt)}",
                         fontWeight = FontWeight.Medium,
-                        letterSpacing = 0.5.sp
+                        letterSpacing = 0.5.sp,
+                        color = buttonTextColor
                     )
                 }
             }
 
-            Button(
+            PrimaryActionButton(
                 onClick = { saveTraining() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonCyan,
-                    contentColor = buttonTextColor
-                ),
-                contentPadding = PaddingValues(vertical = 14.dp),
-                shape = ButtonShape
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     imageVector = Icons.Filled.Check,
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = buttonTextColor
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = "Зберегти",
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.sp
+                    letterSpacing = 1.sp,
+                    color = buttonTextColor
                 )
             }
         }
@@ -1288,19 +1356,9 @@ private fun AddScreen(
                 .padding(bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            FilledTonalButton(
+            SecondaryActionButton(
                 onClick = { showSportCatalog = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = ButtonShape,
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = if (isDark) {
-                        ButtonCyanDark.copy(alpha = 0.42f)
-                    } else {
-                        ButtonCyan.copy(alpha = 0.28f)
-                    },
-                    contentColor = buttonTextColor
-                ),
-                contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1310,13 +1368,15 @@ private fun AddScreen(
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint = buttonTextColor
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = "Редагувати види спорту",
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.3.sp
+                        letterSpacing = 0.3.sp,
+                        color = buttonTextColor
                     )
                 }
             }
@@ -1392,29 +1452,32 @@ private fun SportDropdown(
         var dropdownWidth by remember { mutableStateOf(0.dp) }
         
         Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(
+            ListFilterField(
                 onClick = { expanded = !expanded },
-            modifier = Modifier
-                .fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .onGloballyPositioned { coordinates ->
                         anchorWidthPx = coordinates.size.width
                         dropdownWidth = with(density) { coordinates.size.width.toDp() }
-                },
-            colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = ButtonCyan.copy(alpha = 0.1f),
-                    contentColor = buttonTextColor
-            ),
-                border = BorderStroke(1.dp, ButtonCyan),
-                shape = ButtonShape,
-            contentPadding = PaddingValues(vertical = 14.dp)
-        ) {
-                val displayText = selected?.nameUa ?: "Оберіть вид спорту"
+                    },
+                isHighlighted = selected != null,
+                contentPadding = PaddingValues(vertical = 14.dp, horizontal = 16.dp)
+            ) {
                 Text(
-                    text = displayText,
+                    text = selected?.nameUa ?: "Оберіть вид спорту",
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.5.sp,
+                    color = buttonTextColor,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
                 )
-        }
+                Icon(
+                    imageVector = Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = buttonTextColor.copy(alpha = 0.7f)
+                )
+            }
 
         DropdownMenu(
             expanded = expanded,
