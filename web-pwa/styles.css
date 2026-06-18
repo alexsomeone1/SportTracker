@@ -259,6 +259,18 @@ body {
   line-height: 1;
 }
 
+.nav-icon-stats svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+  color: inherit;
+}
+
+.nav-btn.active .nav-icon-stats svg {
+  width: 27px;
+  height: 27px;
+}
+
 .nav-btn.active .nav-icon {
   width: 50px;
   height: 50px;
@@ -269,12 +281,14 @@ body {
 }
 
 .nav-btn.active .nav-icon,
-.nav-btn.active .nav-icon.material-icons {
+.nav-btn.active .nav-icon.material-icons,
+.nav-btn.active .nav-icon-stats {
   color: var(--button-cyan-active);
 }
 
 .nav-btn:not(.active) .nav-icon,
-.nav-btn:not(.active) .nav-icon.material-icons {
+.nav-btn:not(.active) .nav-icon.material-icons,
+.nav-btn:not(.active) .nav-icon-stats {
   color: rgba(255,255,255,0.62);
 }
 

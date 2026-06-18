@@ -52,7 +52,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -132,6 +131,7 @@ import com.example.sporttracker.ui.theme.ButtonCyanActive
 import com.example.sporttracker.ui.theme.ButtonCyanDark
 import com.example.sporttracker.ui.theme.FilterFieldDark
 import com.example.sporttracker.ui.theme.SportTrackerTheme
+import com.example.sporttracker.R
 import kotlinx.coroutines.launch
 import java.util.UUID
 import java.time.Instant
@@ -430,16 +430,16 @@ private fun AnimatedNavItem(
                         .border(2.dp, ButtonCyanActive, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = navIconFor(tab),
+                    NavTabIcon(
+                        tab = tab,
                         contentDescription = navLabelFor(tab),
                         tint = iconColor,
                         modifier = Modifier.size(if (tab == Tab.ADD) 32.dp else 27.dp)
                     )
                 }
             } else {
-                Icon(
-                    imageVector = navIconFor(tab),
+                NavTabIcon(
+                    tab = tab,
                     contentDescription = navLabelFor(tab),
                     tint = iconColor,
                     modifier = Modifier.size(26.dp)
@@ -462,12 +462,34 @@ private fun navLabelFor(tab: Tab): String =
         Tab.STATS -> "Статистика"
     }
 
-private fun navIconFor(tab: Tab): ImageVector =
-    when (tab) {
-        Tab.LIST -> Icons.AutoMirrored.Filled.FormatListBulleted
-        Tab.ADD -> Icons.Filled.Add
-        Tab.STATS -> Icons.Filled.BarChart
+@Composable
+private fun NavTabIcon(
+    tab: Tab,
+    contentDescription: String,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    if (tab == Tab.STATS) {
+        Icon(
+            painter = painterResource(R.drawable.ic_nav_stats_chart),
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = modifier
+        )
+    } else {
+        val imageVector = when (tab) {
+            Tab.LIST -> Icons.AutoMirrored.Filled.FormatListBulleted
+            Tab.ADD -> Icons.Filled.Add
+            Tab.STATS -> Icons.Filled.Add
+        }
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = modifier
+        )
     }
+}
 
 @Composable
 private fun AppRoot() {
