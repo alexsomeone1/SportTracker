@@ -115,6 +115,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -244,18 +245,14 @@ private enum class FilterFieldStyle {
     Subtle
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ListFilterField(
-    onClick: () -> Unit,
+private fun FilterFieldPanel(
     modifier: Modifier = Modifier,
-    isHighlighted: Boolean = false,
-    style: FilterFieldStyle? = null,
+    style: FilterFieldStyle = FilterFieldStyle.Default,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     content: @Composable RowScope.() -> Unit
 ) {
-    val resolvedStyle = style ?: if (isHighlighted) FilterFieldStyle.Highlighted else FilterFieldStyle.Default
-    val (tealStartAlpha, tealMidAlpha) = when (resolvedStyle) {
+    val (tealStartAlpha, tealMidAlpha) = when (style) {
         FilterFieldStyle.Default -> 0.12f to 0.04f
         FilterFieldStyle.Highlighted -> 0.18f to 0.08f
         FilterFieldStyle.Subtle -> 0.06f to 0.03f
@@ -268,16 +265,15 @@ private fun ListFilterField(
     }
     val shadowAlpha = if (isDark) 0.28f else 0.10f
 
-    Surface(
-        onClick = onClick,
-        modifier = modifier.shadow(
-            elevation = 4.dp,
-            shape = ButtonShape,
-            ambientColor = Color.Black.copy(alpha = shadowAlpha),
-            spotColor = Color.Black.copy(alpha = shadowAlpha)
-        ),
-        shape = ButtonShape,
-        color = Color.Transparent
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 4.dp,
+                shape = ButtonShape,
+                ambientColor = Color.Black.copy(alpha = shadowAlpha),
+                spotColor = Color.Black.copy(alpha = shadowAlpha)
+            )
+            .clip(ButtonShape)
     ) {
         BoxWithConstraints(
             modifier = Modifier
@@ -315,16 +311,87 @@ private fun ListFilterField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun ListFilterField(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isHighlighted: Boolean = false,
+    style: FilterFieldStyle? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    content: @Composable RowScope.() -> Unit
+) {
+    val resolvedStyle = style ?: if (isHighlighted) FilterFieldStyle.Highlighted else FilterFieldStyle.Default
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = ButtonShape,
+        color = Color.Transparent
+    ) {
+        FilterFieldPanel(
+            modifier = Modifier.fillMaxWidth(),
+            style = resolvedStyle,
+            contentPadding = contentPadding,
+            content = content
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeriodFilterButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    textColor: Color
+) {
+    val compactPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+    if (selected) {
+        PrimaryActionButton(
+            onClick = onClick,
+            modifier = modifier,
+            contentPadding = compactPadding,
+            elevation = 4.dp
+        ) {
+            Text(
+                text = text,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.5.sp,
+                color = textColor
+            )
+        }
+    } else {
+        ListFilterField(
+            onClick = onClick,
+            modifier = modifier,
+            style = FilterFieldStyle.Subtle,
+            contentPadding = compactPadding
+        ) {
+            Text(
+                text = text,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.5.sp,
+                color = textColor,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun PrimaryActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
+    elevation: Dp = 6.dp,
     content: @Composable RowScope.() -> Unit
 ) {
     Surface(
         onClick = onClick,
         modifier = modifier.shadow(
-            elevation = 6.dp,
+            elevation = elevation,
             shape = ButtonShape,
             ambientColor = ButtonCyan.copy(alpha = 0.25f),
             spotColor = ButtonCyan.copy(alpha = 0.35f)
@@ -1740,80 +1807,49 @@ private fun StatsScreen(
 
         Spacer(Modifier.width(8.dp))
 
-        // Кольори для кнопок режиму та стрілок
+        // Кольори для стрілок навігації
         val isDark = isSystemInDarkTheme()
         val buttonTextColor = if (isDark) Color.White else Color.Black
-        val activeBg = ButtonCyan
-        val inactiveBg = ButtonCyan.copy(alpha = 0.3f)
 
-        // --- Швидкі фільтри (Тиждень, Місяць, Рік) - звичайні Button
+        // --- Швидкі фільтри (Тиждень, Місяць, Рік)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
         ) {
-            Button(
+            PeriodFilterButton(
+                text = "Тиждень",
+                selected = selectedPeriodFilter == "week",
                 onClick = { setWeekFilter() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedPeriodFilter == "week") activeBg else inactiveBg,
-                    contentColor = buttonTextColor
-                ),
-                shape = ButtonShape,
-                        modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-            ) {
-                    Text(
-                    text = "Тиждень",
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
-                )
-            }
-
-                    Button(
+                modifier = Modifier.weight(1f),
+                textColor = buttonTextColor
+            )
+            PeriodFilterButton(
+                text = "Місяць",
+                selected = selectedPeriodFilter == "month",
                 onClick = { setMonthFilter() },
-                        colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedPeriodFilter == "month") activeBg else inactiveBg,
-                            contentColor = buttonTextColor
-                        ),
-                shape = ButtonShape,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                    ) {
-                    Text(
-                    text = "Місяць",
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
-                )
-                    }
-
-                    Button(
+                textColor = buttonTextColor
+            )
+            PeriodFilterButton(
+                text = "Рік",
+                selected = selectedPeriodFilter == "year",
                 onClick = { setYearFilter() },
-                        colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedPeriodFilter == "year") activeBg else inactiveBg,
-                            contentColor = buttonTextColor
-                        ),
-                shape = ButtonShape,
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-            ) {
-                    Text(
-                    text = "Рік",
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp
-                )
-            }
+                textColor = buttonTextColor
+            )
         }
 
         Spacer(Modifier.width(8.dp))
 
-        // Кнопки навігації по періодах (стрілки вліво/вправо)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        // Навігація по періодах
+        val canNavigate = canNavigateForward()
+        FilterFieldPanel(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+        ) {
             IconButton(
                 onClick = { navigatePeriod(-1) },
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -1821,28 +1857,25 @@ private fun StatsScreen(
                     tint = ButtonCyan
                 )
             }
-            
-            Spacer(Modifier.width(16.dp))
-            
-            // Показуємо вибраний період
-                    Text(
+
+            Text(
                 text = "${fromDate.format(fmt)} — ${toDate.format(fmt)}",
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                color = buttonTextColor
             )
-            
-            Spacer(Modifier.width(16.dp))
-            
-            val canNavigate = canNavigateForward()
+
             IconButton(
                 onClick = { navigatePeriod(1) },
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(44.dp),
                 enabled = canNavigate
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Наступний період",
-                    tint = if (canNavigate) ButtonCyan else Color.Gray.copy(alpha = 0.5f)
+                    tint = if (canNavigate) ButtonCyan else buttonTextColor.copy(alpha = 0.35f)
                 )
             }
         }
