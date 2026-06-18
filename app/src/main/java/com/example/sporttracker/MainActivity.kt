@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -303,6 +304,63 @@ private fun FilterFieldPanel(
                     .fillMaxWidth()
                     .padding(contentPadding),
                 verticalAlignment = Alignment.CenterVertically,
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModalPanel(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val baseGradient = if (isDark) {
+        Brush.verticalGradient(listOf(Color(0xFF2A2A2A), Color(0xFF161616)))
+    } else {
+        Brush.verticalGradient(listOf(Color.White, Color(0xFFF5F5F5)))
+    }
+    val shadowAlpha = if (isDark) 0.45f else 0.15f
+    val dialogShape = RoundedCornerShape(16.dp)
+
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 8.dp,
+                shape = dialogShape,
+                ambientColor = Color.Black.copy(alpha = shadowAlpha),
+                spotColor = Color.Black.copy(alpha = shadowAlpha)
+            )
+            .clip(dialogShape)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(baseGradient)
+        ) {
+            val gradientEnd = with(LocalDensity.current) {
+                Offset(maxWidth.toPx(), maxHeight.toPx())
+            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                ButtonCyan.copy(alpha = if (isDark) 0.10f else 0.08f),
+                                ButtonCyan.copy(alpha = if (isDark) 0.04f else 0.03f),
+                                Color.Transparent
+                            ),
+                            start = Offset.Zero,
+                            end = gradientEnd
+                        )
+                    )
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 content = content
             )
         }
@@ -2020,91 +2078,98 @@ private fun SportCatalogDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+        ModalPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 24.dp)
         ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    Row(
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Види спорту",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = catalogCloseTint
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Закрити",
+                        tint = catalogCloseTint
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = listMaxHeight),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(sports, key = { it.id }) { sport ->
+                    FilterFieldPanel(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        style = FilterFieldStyle.Subtle,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("Види спорту", style = MaterialTheme.typography.titleLarge)
-                        IconButton(onClick = onDismiss) {
+                        Text(
+                            text = sport.emoji,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = sport.nameUa,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = catalogCloseTint,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { editorState = SportEditorState.Edit(sport) },
+                            modifier = Modifier.size(40.dp)
+                        ) {
                             Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрити",
-                                tint = catalogCloseTint
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Змінити",
+                                tint = catalogEditTint
                             )
                         }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = listMaxHeight),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(sports, key = { it.id }) { sport ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(MaterialTheme.shapes.small)
-                                    .background(ButtonCyan.copy(alpha = 0.08f))
-                                    .padding(vertical = 10.dp, horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        if (!sport.isBuiltIn) {
+                            IconButton(
+                                onClick = { pendingDelete = sport },
+                                modifier = Modifier.size(40.dp)
                             ) {
-                                Text(sport.emoji, style = MaterialTheme.typography.titleMedium)
-                                Spacer(Modifier.width(10.dp))
-                                Text(
-                                    sport.nameUa,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.weight(1f)
+                                Icon(
+                                    Icons.Outlined.DeleteOutline,
+                                    contentDescription = "Видалити",
+                                    tint = MaterialTheme.colorScheme.error
                                 )
-                                IconButton(onClick = { editorState = SportEditorState.Edit(sport) }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Edit,
-                                        contentDescription = "Змінити",
-                                        tint = catalogEditTint
-                                    )
-                                }
-                                if (!sport.isBuiltIn) {
-                                    IconButton(onClick = { pendingDelete = sport }) {
-                                        Icon(
-                                            Icons.Outlined.DeleteOutline,
-                                            contentDescription = "Видалити",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = { editorState = SportEditorState.CreateNew },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ButtonCyan,
-                            contentColor = Color.Black
-                        ),
-                        shape = ButtonShape
-                    ) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = null,
-                            tint = Color.Black
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Додати вид спорту")
-                    }
                 }
             }
+            Spacer(Modifier.height(12.dp))
+            PrimaryActionButton(
+                onClick = { editorState = SportEditorState.CreateNew },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = Color.Black
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Додати вид спорту",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black
+                )
+            }
+        }
     }
 
     when (val st = editorState) {
