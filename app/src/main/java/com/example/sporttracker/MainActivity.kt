@@ -28,7 +28,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -535,17 +538,20 @@ private fun AnimatedBottomNavBar(
     onTabSelected: (Tab) -> Unit
 ) {
     val selectedIndex = Tab.entries.indexOf(selectedTab)
-    val navColor = Color(0xFF202229)
+    val isDark = isSystemInDarkTheme()
+    val navColor = if (isDark) Color(0xFF202229) else Color.White
+    val navShadowAlpha = if (isDark) 150 else 45
     val humpBaseline = 42.dp
     val humpRise = 24.dp
-    val barHeight = 90.dp
+    val barHeight = 80.dp
     val horizontalInset = 18.dp
+    val navContentHeight = barHeight + humpBaseline
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(barHeight + humpBaseline)
-            .navigationBarsPadding()
+            .height(navContentHeight + bottomInset)
     ) {
         val humpCenterX by animateDpAsState(
             targetValue = horizontalInset +
@@ -618,7 +624,7 @@ private fun AnimatedBottomNavBar(
                     strokeWidth = 12.dp.toPx()
                     strokeCap = Paint.Cap.ROUND
                     strokeJoin = Paint.Join.ROUND
-                    color = android.graphics.Color.argb(150, 0, 0, 0)
+                    color = android.graphics.Color.argb(navShadowAlpha, 0, 0, 0)
                     maskFilter = BlurMaskFilter(16.dp.toPx(), BlurMaskFilter.Blur.NORMAL)
                 }
                 canvas.nativeCanvas.save()
@@ -633,7 +639,7 @@ private fun AnimatedBottomNavBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(barHeight + humpBaseline)
+                .height(navContentHeight)
                 .align(Alignment.TopCenter)
                 .offset(y = 15.dp)
                 .padding(start = horizontalInset, top = 24.dp, end = horizontalInset),
@@ -664,13 +670,17 @@ private fun AnimatedNavItem(
         animationSpec = tween(durationMillis = 280),
         label = "navIconOffset"
     )
+    val isDark = isSystemInDarkTheme()
+    val selectedAccent = if (isDark) ButtonCyanActive else ButtonCyanDark
+    val unselectedColor = if (isDark) Color.White.copy(alpha = 0.62f) else Color(0xFF6B6B6B)
+    val unselectedLabelColor = if (isDark) Color.White.copy(alpha = 0.58f) else Color(0xFF6B6B6B)
     val iconColor by animateColorAsState(
-        targetValue = if (selected) ButtonCyanActive else Color.White.copy(alpha = 0.62f),
+        targetValue = if (selected) selectedAccent else unselectedColor,
         animationSpec = tween(durationMillis = 220),
         label = "navIconColor"
     )
     val labelColor by animateColorAsState(
-        targetValue = if (selected) ButtonCyanActive else Color.White.copy(alpha = 0.58f),
+        targetValue = if (selected) selectedAccent else unselectedLabelColor,
         animationSpec = tween(durationMillis = 220),
         label = "navLabelColor"
     )
@@ -693,8 +703,8 @@ private fun AnimatedNavItem(
                     modifier = Modifier
                         .size(50.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF242832))
-                        .border(2.dp, ButtonCyanActive, CircleShape),
+                        .background(if (isDark) Color(0xFF242832) else Color(0xFFEAFBF8))
+                        .border(2.dp, selectedAccent, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     NavTabIcon(
